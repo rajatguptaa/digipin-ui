@@ -1,46 +1,149 @@
-# Getting Started with Create React App
+# DIGIPIN UI - Encoder & Decoder
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A modern, responsive web application for encoding and decoding India's Digital Postal Index Number (DIGIPIN) system. Built with React, TypeScript, and the official [digipinjs](https://github.com/rajatguptaa/digipinjs) library.
 
-## Available Scripts
+## 🌐 Live Demo
 
-In the project directory, you can run:
+**[Try the DIGIPIN UI here](https://digipin-ui.netlify.app/)**
 
-### `npm start`
+## 📖 About DIGIPIN
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+DIGIPIN (Digital PIN) is a 10-character alphanumeric geocode developed by the Department of Posts, India. It provides a precise, user-friendly way to encode geographic coordinates that can be easily shared and decoded back to latitude/longitude pairs.
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+Each DIGIPIN corresponds to a ~4×4 m grid, ensuring precise positioning for:
+- **E-commerce deliveries** - Accurate last-mile delivery
+- **Emergency services** - Quick response with exact location
+- **Navigation** - Precise location sharing
+- **Address management** - Digital address standardization
 
-### `npm test`
+## ✨ Features
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- **🔢 Encode Coordinates**: Convert latitude/longitude to DIGIPIN codes
+- **📍 Decode DIGIPIN**: Convert DIGIPIN codes back to coordinates
+- **📱 Responsive Design**: Works seamlessly on desktop, tablet, and mobile
+- **⚡ Real-time Processing**: Instant encoding/decoding with no server calls
+- **🛡️ Error Handling**: Comprehensive validation and error messages
+- **🎨 Modern UI**: Clean, intuitive interface with smooth animations
+- **🌍 Browser Compatible**: Works in all modern browsers
 
-### `npm run build`
+## 🚀 Quick Start
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Prerequisites
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+- Node.js (v14 or higher)
+- npm (v6 or higher)
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Installation
 
-### `npm run eject`
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/rajatguptaa/digipin-ui.git
+   cd digipin-ui
+   ```
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+3. **Start the development server**
+   ```bash
+   npm start
+   ```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+4. **Open your browser**
+   Navigate to [http://localhost:3000](http://localhost:3000)
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+## 📖 Usage
 
-## Learn More
+### Encoding Coordinates to DIGIPIN
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+1. Enter the **latitude** (e.g., `28.6139` for Delhi)
+2. Enter the **longitude** (e.g., `77.2090` for Delhi)
+3. Click **"Encode"**
+4. Get your **DIGIPIN** (e.g., `39J-438-TJC7`)
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### Decoding DIGIPIN to Coordinates
+
+1. Enter the **DIGIPIN** code (e.g., `39J-438-TJC7`)
+2. Click **"Decode"**
+3. Get the **latitude** and **longitude** coordinates
+
+## 🛠️ Technology Stack
+
+- **Frontend**: React 19 with TypeScript
+- **Styling**: CSS3 with modern design patterns
+- **DIGIPIN Logic**: [digipinjs](https://github.com/rajatguptaa/digipinjs) library
+- **Build Tool**: Create React App
+- **Deployment**: Netlify
+- **Browser Support**: All modern browsers
+
+## 📁 Project Structure
+
+```
+digipin-ui/
+├── public/
+│   ├── _redirects          # Netlify SPA routing
+│   └── index.html
+├── src/
+│   ├── App.tsx            # Main application component
+│   ├── App.css            # Application styles
+│   └── index.tsx          # Application entry point
+├── netlify.toml           # Netlify deployment config
+└── package.json
+```
+
+## 🔧 Development
+
+### Available Scripts
+
+- `npm start` - Runs the app in development mode
+- `npm run build` - Builds the app for production
+- `npm test` - Launches the test runner
+- `npm run eject` - Ejects from Create React App
+
+### Browser Compatibility
+
+The app is configured to work with:
+- Chrome (latest)
+- Firefox (latest)
+- Safari (latest)
+- Edge (latest)
+
+## 🌍 DIGIPIN Coverage
+
+DIGIPIN covers all of India with coordinates:
+- **Latitude**: 2.5°N to 38.5°N
+- **Longitude**: 63.5°E to 99.5°E
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [Department of Posts, Government of India](https://www.indiapost.gov.in/vas/Pages/digipin.aspx) for the DIGIPIN system
+- [digipinjs](https://github.com/rajatguptaa/digipinjs) library for the core DIGIPIN logic
+- [Create React App](https://create-react-app.dev/) for the development framework
+- [Netlify](https://netlify.com/) for hosting and deployment
+
+## 📞 Support
+
+If you have any questions or need help, please:
+- Open an issue on GitHub
+- Check the [DIGIPIN documentation](https://www.indiapost.gov.in/vas/Pages/digipin.aspx)
+- Visit the [digipinjs repository](https://github.com/rajatguptaa/digipinjs)
+
+---
+
+**Made with ❤️ for India's Digital Address System**

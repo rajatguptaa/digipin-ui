@@ -1,109 +1,832 @@
-import React, { useState } from 'react';
-import './App.css';
+import React, { useState, useEffect } from 'react';
+import { 
+  AppBar, 
+  Toolbar, 
+  Typography, 
+  Tabs, 
+  Tab, 
+  Box, 
+  Paper, 
+  TextField, 
+  Button, 
+  IconButton, 
+  Dialog, 
+  DialogTitle, 
+  DialogContent, 
+  DialogActions,
+  Chip,
+  CircularProgress,
+  Alert,
+  Autocomplete,
+  Fab,
+  ThemeProvider,
+  createTheme,
+  CssBaseline
+} from '@mui/material';
+import { 
+  MyLocation, 
+  Info, 
+  Search, 
+  LocationOn, 
+  ContentCopy,
+  CheckCircle
+} from '@mui/icons-material';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Rectangle } from 'react-leaflet';
+import L from 'leaflet';
 import { getDigiPin, getLatLngFromDigiPin } from 'digipinjs';
+import './App.css';
+
+// Fix default marker icon issue in leaflet
+// @ts-ignore
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
+  iconUrl: require('leaflet/dist/images/marker-icon.png'),
+  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
+});
+
+// Create dark theme
+const darkTheme = createTheme({
+  palette: {
+    mode: 'dark',
+    primary: {
+      main: '#64b5f6', // Light blue
+      light: '#9be7ff',
+      dark: '#2286c3',
+    },
+    secondary: {
+      main: '#81c784', // Light green
+      light: '#b2fab4',
+      dark: '#519657',
+    },
+    background: {
+      default: '#0a0a0a',
+      paper: '#1a1a1a',
+    },
+    text: {
+      primary: '#ffffff',
+      secondary: '#b0b0b0',
+    },
+  },
+  components: {
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundImage: 'none',
+          backgroundColor: 'rgba(45, 45, 45, 0.95)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+        },
+      },
+    },
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          backgroundImage: 'none',
+          backgroundColor: 'rgba(26, 26, 26, 0.95)',
+          backdropFilter: 'blur(10px)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+        },
+      },
+    },
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          '& .MuiOutlinedInput-root': {
+            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+            },
+            '&.Mui-focused': {
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            },
+          },
+        },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+          fontWeight: 500,
+          borderRadius: 8,
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          borderRadius: 6,
+        },
+      },
+    },
+  },
+});
+
+interface Location {
+  lat: number;
+  lng: number;
+  name?: string;
+}
+
+interface SearchResult {
+  place_id: number;
+  display_name: string;
+  lat: string;
+  lon: string;
+}
+
+// India bounds - more precise boundaries
+const indiaBounds: [[number, number], [number, number]] = [
+  [6.5, 68.0],   // Southwest (min lat, min lng)
+  [37.1, 97.5],  // Northeast (max lat, max lng)
+];
+
+// Additional validation function for India coordinates
+const isWithinIndia = (lat: number, lng: number): boolean => {
+  // Basic bounds check
+  if (lat < 6.5 || lat > 37.1 || lng < 68.0 || lng > 97.5) {
+    return false;
+  }
+  
+  // Additional checks for specific regions that might be outside India
+  // Exclude areas that are clearly not in India
+  
+  // Exclude areas north of Kashmir (Pakistan/China border)
+  if (lat > 35.5 && lng > 74.0) {
+    return false;
+  }
+  
+  // Exclude areas in the northeast that might be in China/Myanmar
+  if (lat > 28.0 && lng > 95.0) {
+    return false;
+  }
+  
+  // Exclude areas in the northwest that might be in Pakistan
+  if (lat < 23.0 && lng < 70.0) {
+    return false;
+  }
+  
+  // Exclude areas in the far east that might be in Bangladesh
+  if (lat < 22.0 && lng > 88.0) {
+    return false;
+  }
+  
+  return true;
+};
+
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`simple-tabpanel-${index}`}
+      aria-labelledby={`simple-tab-${index}`}
+      {...other}
+    >
+      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
+    </div>
+  );
+}
+
+// Map controller component
+function MapController({ center }: { center: [number, number] }) {
+  const map = useMap();
+  
+  React.useEffect(() => {
+    map.setView(center, 12);
+  }, [center, map]);
+  
+  return null;
+}
+
+// Location selector component
+function LocationSelector({ 
+  setLat, 
+  setLng, 
+  setLocationName, 
+  setLocationLoading,
+  setInvalidCoordinates,
+  setInvalidClickLocation
+}: { 
+  setLat: (lat: string) => void; 
+  setLng: (lng: string) => void;
+  setLocationName: (name: string) => void;
+  setLocationLoading: (loading: boolean) => void;
+  setInvalidCoordinates: (invalid: boolean) => void;
+  setInvalidClickLocation: (location: [number, number] | null) => void;
+}) {
+  useMapEvents({
+    click: async (e: any) => {
+      const { lat, lng } = e.latlng;
+      
+      // Use the enhanced India validation function
+      const coordinatesWithinIndia = isWithinIndia(lat, lng);
+      
+      if (coordinatesWithinIndia) {
+        setInvalidCoordinates(false);
+        setInvalidClickLocation(null);
+        setLat(lat.toFixed(6));
+        setLng(lng.toFixed(6));
+        
+        // Get location name
+        setLocationLoading(true);
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`
+          );
+          const data = await response.json();
+          if (data.display_name) {
+            setLocationName(data.display_name);
+          }
+        } catch (error) {
+          console.error('Error fetching location name:', error);
+        } finally {
+          setLocationLoading(false);
+        }
+      } else {
+        // Show error for coordinates outside India
+        setInvalidCoordinates(true);
+        setInvalidClickLocation([lat, lng]);
+        setLat('');
+        setLng('');
+        setLocationName('');
+        
+        // Remove the invalid marker after 3 seconds
+        setTimeout(() => {
+          setInvalidClickLocation(null);
+        }, 3000);
+        
+        alert('⚠️ Please select a location within India. DIGIPIN only works for Indian coordinates.\n\nIndia bounds: Latitude 6.5° to 37.1°, Longitude 68.0° to 97.5°');
+      }
+    },
+  });
+  return null;
+}
 
 function App() {
-  // Encode state
-  const [lat, setLat] = useState('');
-  const [lng, setLng] = useState('');
-  const [encodedPin, setEncodedPin] = useState('');
+  const [activeTab, setActiveTab] = useState(0);
+  const [encodeLat, setEncodeLat] = useState('');
+  const [encodeLng, setEncodeLng] = useState('');
+  const [encodeResult, setEncodeResult] = useState('');
   const [encodeError, setEncodeError] = useState('');
-
-  // Decode state
-  const [digipin, setDigipin] = useState('');
-  const [decodedCoords, setDecodedCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [decodeDigipin, setDecodeDigipin] = useState('');
+  const [decodeResult, setDecodeResult] = useState<Location | null>(null);
   const [decodeError, setDecodeError] = useState('');
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+  const [locationName, setLocationName] = useState('');
+  const [loadingLocation, setLoadingLocation] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([20.5937, 78.9629]); // Center of India
+  const [invalidCoordinates, setInvalidCoordinates] = useState(false);
+  const [invalidClickLocation, setInvalidClickLocation] = useState<[number, number] | null>(null);
 
-  // Encode handler
-  const handleEncode = (e: React.FormEvent) => {
-    e.preventDefault();
-    setEncodeError('');
-    setEncodedPin('');
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setActiveTab(newValue);
+  };
+
+  const encodeCoordinates = () => {
     try {
-      const latNum = parseFloat(lat);
-      const lngNum = parseFloat(lng);
-      if (isNaN(latNum) || isNaN(lngNum)) {
-        setEncodeError('Please enter valid numbers for latitude and longitude.');
+      setEncodeError('');
+      const lat = parseFloat(encodeLat);
+      const lng = parseFloat(encodeLng);
+      
+      if (isNaN(lat) || isNaN(lng)) {
+        setEncodeError('Please enter valid coordinates');
         return;
       }
-      const pin = getDigiPin(latNum, lngNum);
-      setEncodedPin(pin);
-    } catch (err: any) {
-      setEncodeError(err.message || 'Failed to encode DIGIPIN.');
+      
+      // Use the enhanced India validation function
+      if (!isWithinIndia(lat, lng)) {
+        setEncodeError(`Coordinates must be within India (Latitude: ${indiaBounds[0][0]}° to ${indiaBounds[1][0]}°, Longitude: ${indiaBounds[0][1]}° to ${indiaBounds[1][1]}°)`);
+        return;
+      }
+      
+      const digipin = getDigiPin(lat, lng);
+      setEncodeResult(digipin);
+      setSelectedLocation({ lat, lng });
+      setMapCenter([lat, lng]);
+      fetchLocationName(lat, lng);
+    } catch (error) {
+      setEncodeError('Error encoding coordinates');
     }
   };
 
-  // Decode handler
-  const handleDecode = (e: React.FormEvent) => {
-    e.preventDefault();
-    setDecodeError('');
-    setDecodedCoords(null);
+  const decodeDigipinCode = () => {
     try {
-      const coords = getLatLngFromDigiPin(digipin.trim());
-      setDecodedCoords(coords);
-    } catch (err: any) {
-      setDecodeError(err.message || 'Failed to decode DIGIPIN.');
+      setDecodeError('');
+      const coordinates = getLatLngFromDigiPin(decodeDigipin);
+      setDecodeResult({ lat: coordinates.latitude, lng: coordinates.longitude });
+      setSelectedLocation({ lat: coordinates.latitude, lng: coordinates.longitude });
+      setMapCenter([coordinates.latitude, coordinates.longitude]);
+      fetchLocationName(coordinates.latitude, coordinates.longitude);
+    } catch (error) {
+      setDecodeError('Invalid DIGIPIN code');
     }
   };
+
+  const fetchLocationName = async (lat: number, lng: number) => {
+    setLoadingLocation(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`
+      );
+      const data = await response.json();
+      if (data.display_name) {
+        setLocationName(data.display_name);
+      }
+    } catch (error) {
+      console.error('Error fetching location name:', error);
+    } finally {
+      setLoadingLocation(false);
+    }
+  };
+
+  const getCurrentLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          if (isWithinIndia(latitude, longitude)) {
+            setSelectedLocation({ lat: latitude, lng: longitude });
+            setEncodeLat(latitude.toFixed(6));
+            setEncodeLng(longitude.toFixed(6));
+            setMapCenter([latitude, longitude]);
+            fetchLocationName(latitude, longitude);
+          } else {
+            alert('⚠️ Your current location is outside India. DIGIPIN only works for Indian coordinates.');
+          }
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+        }
+      );
+    }
+  };
+
+  const searchPlaces = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    
+    setSearching(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', India')}&limit=5&addressdetails=1`
+      );
+      const data = await response.json();
+      setSearchResults(data);
+    } catch (error) {
+      console.error('Error searching places:', error);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleSearchSelect = (result: SearchResult) => {
+    const lat = parseFloat(result.lat);
+    const lng = parseFloat(result.lon);
+    
+    if (isWithinIndia(lat, lng)) {
+      setSelectedLocation({ lat, lng, name: result.display_name });
+      setEncodeLat(lat.toFixed(6));
+      setEncodeLng(lng.toFixed(6));
+      setLocationName(result.display_name);
+      setMapCenter([lat, lng]);
+      setSearchQuery('');
+      setSearchResults([]);
+    } else {
+      alert('⚠️ This location is outside India. DIGIPIN only works for Indian coordinates.');
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchQuery) {
+        searchPlaces(searchQuery);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <h1>DIGIPIN Encoder & Decoder</h1>
-        <div className="digipin-container">
-          {/* Encode Section */}
-          <section className="digipin-section">
-            <h2>Encode (Lat/Lng → DIGIPIN)</h2>
-            <form onSubmit={handleEncode} className="digipin-form">
-              <input
-                type="text"
-                placeholder="Latitude (e.g. 28.6139)"
-                value={lat}
-                onChange={e => setLat(e.target.value)}
-                className="digipin-input"
-              />
-              <input
-                type="text"
-                placeholder="Longitude (e.g. 77.2090)"
-                value={lng}
-                onChange={e => setLng(e.target.value)}
-                className="digipin-input"
-              />
-              <button type="submit" className="digipin-btn">Encode</button>
-            </form>
-            {encodedPin && <div className="digipin-result">DIGIPIN: <b>{encodedPin}</b></div>}
-            {encodeError && <div className="digipin-error">{encodeError}</div>}
-          </section>
+    <ThemeProvider theme={darkTheme}>
+      <CssBaseline />
+      <div className="App" style={{ backgroundColor: '#0a0a0a', minHeight: '100vh' }}>
+        <AppBar position="static" elevation={0}>
+          <Toolbar>
+            <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: '#64b5f6', fontWeight: 'bold' }}>
+              DIGIPIN Explorer
+            </Typography>
+            <IconButton onClick={() => setInfoOpen(true)} sx={{ color: '#64b5f6' }}>
+              <Info />
+            </IconButton>
+          </Toolbar>
+          <Tabs value={activeTab} onChange={handleTabChange} centered sx={{ backgroundColor: 'rgba(100, 181, 246, 0.1)' }}>
+            <Tab label="Encode" sx={{ color: '#64b5f6' }} />
+            <Tab label="Decode" sx={{ color: '#64b5f6' }} />
+          </Tabs>
+        </AppBar>
 
-          {/* Decode Section */}
-          <section className="digipin-section">
-            <h2>Decode (DIGIPIN → Lat/Lng)</h2>
-            <form onSubmit={handleDecode} className="digipin-form">
-              <input
-                type="text"
-                placeholder="DIGIPIN (e.g. 39J-438-TJC7)"
-                value={digipin}
-                onChange={e => setDigipin(e.target.value)}
-                className="digipin-input"
+        <div style={{ position: 'relative', height: 'calc(100vh - 120px)' }}>
+          {/* Full-screen map */}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }}>
+            <MapContainer
+              // @ts-ignore: center prop is valid in react-leaflet v5
+              center={mapCenter}
+              zoom={5}
+              style={{ height: '100%', width: '100%' }}
+              minZoom={4}
+              maxBounds={indiaBounds}
+              maxBoundsViscosity={1.0}
+              bounds={indiaBounds}
+            >
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                // @ts-ignore: attribution is a valid prop for TileLayer
+                attribution="&copy; OpenStreetMap contributors"
               />
-              <button type="submit" className="digipin-btn">Decode</button>
-            </form>
-            {decodedCoords && (
-              <div className="digipin-result">
-                Latitude: <b>{decodedCoords.latitude}</b><br />
-                Longitude: <b>{decodedCoords.longitude}</b>
-              </div>
-            )}
-            {decodeError && <div className="digipin-error">{decodeError}</div>}
-          </section>
+              
+              {/* India boundary overlay */}
+              <Rectangle
+                bounds={indiaBounds}
+                pathOptions={{
+                  color: '#64b5f6',
+                  weight: 2,
+                  fillColor: '#64b5f6',
+                  fillOpacity: 0.1,
+                  dashArray: '5, 5'
+                }}
+              />
+              
+              <LocationSelector 
+                setLat={setEncodeLat} 
+                setLng={setEncodeLng} 
+                setLocationName={setLocationName}
+                setLocationLoading={setLoadingLocation}
+                setInvalidCoordinates={setInvalidCoordinates}
+                setInvalidClickLocation={setInvalidClickLocation}
+              />
+              {selectedLocation && (
+                <Marker position={[selectedLocation.lat, selectedLocation.lng]} />
+              )}
+              {invalidClickLocation && (
+                <Marker 
+                  position={invalidClickLocation}
+                  icon={L.divIcon({
+                    className: 'invalid-marker',
+                    html: '<div style="background-color: #f44336; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>',
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                  })}
+                />
+              )}
+              <MapController center={mapCenter} />
+            </MapContainer>
+          </div>
+
+          {/* Floating Control Panel */}
+          <Paper 
+            elevation={8} 
+            sx={{ 
+              position: 'absolute', 
+              top: 20, 
+              right: 20, 
+              width: 400, 
+              maxHeight: 'calc(100vh - 120px)',
+              zIndex: 3,
+              borderRadius: 2,
+              overflow: 'hidden',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}
+          >
+            <Tabs 
+              value={activeTab} 
+              onChange={handleTabChange} 
+              variant="fullWidth"
+              sx={{ backgroundColor: 'rgba(100, 181, 246, 0.1)' }}
+            >
+              <Tab 
+                icon={<LocationOn />} 
+                label="Encode" 
+                iconPosition="start"
+                sx={{ color: '#64b5f6' }}
+              />
+              <Tab 
+                icon={<Search />} 
+                label="Decode" 
+                iconPosition="start"
+                sx={{ color: '#64b5f6' }}
+              />
+            </Tabs>
+
+            {/* Encode Tab */}
+            <TabPanel value={activeTab} index={0}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Typography variant="h6" gutterBottom sx={{ color: '#ffffff' }}>
+                  Convert Coordinates to DIGIPIN
+                </Typography>
+                
+                {/* Invalid Coordinates Warning */}
+                {invalidCoordinates && (
+                  <Alert severity="warning" sx={{ backgroundColor: 'rgba(255, 152, 0, 0.1)', border: '1px solid rgba(255, 152, 0, 0.3)' }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      ⚠️ Invalid Location Selected
+                    </Typography>
+                    <Typography variant="body2">
+                      Please click within the blue boundary (India) on the map to select valid coordinates.
+                    </Typography>
+                  </Alert>
+                )}
+                
+                {/* Location Name Display */}
+                {locationName && (
+                  <Alert severity="info" icon={<LocationOn />} sx={{ backgroundColor: 'rgba(100, 181, 246, 0.1)' }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Selected Location:
+                    </Typography>
+                    <Typography variant="body2">
+                      {locationName}
+                    </Typography>
+                  </Alert>
+                )}
+
+                {loadingLocation && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1 }}>
+                    <CircularProgress size={16} sx={{ color: '#64b5f6' }} />
+                    <Typography variant="body2" color="text.secondary">
+                      Getting location name...
+                    </Typography>
+                  </Box>
+                )}
+                
+                <TextField
+                  label="Latitude"
+                  placeholder="e.g., 28.6139"
+                  value={encodeLat}
+                  onChange={(e) => setEncodeLat(e.target.value)}
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                />
+                
+                <TextField
+                  label="Longitude"
+                  placeholder="e.g., 77.2090"
+                  value={encodeLng}
+                  onChange={(e) => setEncodeLng(e.target.value)}
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                />
+
+                <Button
+                  variant="contained"
+                  onClick={encodeCoordinates}
+                  fullWidth
+                  sx={{ mt: 1, backgroundColor: '#64b5f6', '&:hover': { backgroundColor: '#42a5f5' } }}
+                >
+                  Generate DIGIPIN
+                </Button>
+
+                {encodeResult && (
+                  <Alert severity="success" sx={{ mt: 2, backgroundColor: 'rgba(129, 199, 132, 0.1)' }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      DIGIPIN Generated:
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                      <Chip 
+                        label={encodeResult} 
+                        color="primary" 
+                        variant="filled"
+                        sx={{ fontSize: '1.1rem', fontWeight: 'bold', backgroundColor: '#64b5f6' }}
+                      />
+                      <IconButton 
+                        size="small" 
+                        onClick={() => copyToClipboard(encodeResult)}
+                        sx={{ color: '#64b5f6' }}
+                      >
+                        {copied ? <CheckCircle /> : <ContentCopy />}
+                      </IconButton>
+                    </Box>
+                  </Alert>
+                )}
+
+                {encodeError && (
+                  <Alert severity="error" sx={{ mt: 2 }}>
+                    {encodeError}
+                  </Alert>
+                )}
+              </Box>
+            </TabPanel>
+
+            {/* Decode Tab */}
+            <TabPanel value={activeTab} index={1}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Typography variant="h6" gutterBottom sx={{ color: '#ffffff' }}>
+                  Convert DIGIPIN to Coordinates
+                </Typography>
+                
+                <TextField
+                  label="DIGIPIN"
+                  placeholder="e.g., 39J-438-TJC7"
+                  value={decodeDigipin}
+                  onChange={(e) => setDecodeDigipin(e.target.value)}
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                />
+
+                <Button
+                  variant="contained"
+                  onClick={decodeDigipinCode}
+                  fullWidth
+                  sx={{ mt: 1, backgroundColor: '#64b5f6', '&:hover': { backgroundColor: '#42a5f5' } }}
+                >
+                  Decode Coordinates
+                </Button>
+
+                {decodeResult && (
+                  <Alert severity="success" sx={{ mt: 2, backgroundColor: 'rgba(129, 199, 132, 0.1)' }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Coordinates Found:
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
+                      <Chip 
+                        label={`Latitude: ${decodeResult.lat}`} 
+                        color="primary" 
+                        variant="outlined"
+                        icon={<LocationOn />}
+                        sx={{ borderColor: '#64b5f6', color: '#64b5f6' }}
+                      />
+                      <Chip 
+                        label={`Longitude: ${decodeResult.lng}`} 
+                        color="primary" 
+                        variant="outlined"
+                        icon={<LocationOn />}
+                        sx={{ borderColor: '#64b5f6', color: '#64b5f6' }}
+                      />
+                    </Box>
+                  </Alert>
+                )}
+
+                {decodeError && (
+                  <Alert severity="error" sx={{ mt: 2 }}>
+                    {decodeError}
+                  </Alert>
+                )}
+              </Box>
+            </TabPanel>
+          </Paper>
+
+          {/* Search Bar */}
+          <Paper 
+            elevation={4} 
+            sx={{ 
+              position: 'absolute', 
+              top: 20, 
+              left: 20, 
+              width: 350,
+              zIndex: 3,
+              borderRadius: 2,
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}
+          >
+            <Box sx={{ p: 2 }}>
+              <Autocomplete
+                freeSolo
+                options={searchResults}
+                getOptionLabel={(option) => 
+                  typeof option === 'string' ? option : option.display_name
+                }
+                inputValue={searchQuery}
+                onInputChange={(event, newInputValue) => {
+                  setSearchQuery(newInputValue);
+                }}
+                onChange={(event, newValue) => {
+                  if (newValue && typeof newValue !== 'string') {
+                    handleSearchSelect(newValue);
+                  }
+                }}
+                loading={searching}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Search places in India..."
+                    variant="outlined"
+                    size="small"
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: <Search sx={{ mr: 1, color: 'text.secondary' }} />,
+                      endAdornment: (
+                        <>
+                          {searching ? <CircularProgress color="inherit" size={20} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
+                renderOption={(props, option) => (
+                  <Box component="li" {...props}>
+                    <LocationOn sx={{ mr: 1, color: 'text.secondary' }} />
+                    <Typography variant="body2" noWrap>
+                      {option.display_name}
+                    </Typography>
+                  </Box>
+                )}
+                noOptionsText="No places found"
+                sx={{ width: '100%' }}
+              />
+            </Box>
+          </Paper>
+
+          {/* Floating Action Button for Current Location */}
+          <Fab
+            color="primary"
+            aria-label="current location"
+            sx={{
+              position: 'absolute',
+              bottom: 20,
+              left: 20,
+              zIndex: 3,
+              backgroundColor: '#64b5f6',
+              '&:hover': { backgroundColor: '#42a5f5' },
+            }}
+            onClick={getCurrentLocation}
+          >
+            <MyLocation />
+          </Fab>
         </div>
-        <footer style={{ marginTop: 32, fontSize: 14, opacity: 0.7 }}>
-          <a href="https://github.com/rajatguptaa/digipinjs" target="_blank" rel="noopener noreferrer" style={{ color: '#fff' }}>
-            Powered by digipinjs
-          </a>
-        </footer>
-      </header>
-    </div>
+
+        {/* Info Dialog */}
+        <Dialog open={infoOpen} onClose={() => setInfoOpen(false)} maxWidth="sm" fullWidth>
+          <DialogTitle sx={{ color: '#ffffff' }}>
+            About DIGIPIN
+            <IconButton
+              aria-label="close"
+              onClick={() => setInfoOpen(false)}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: '#64b5f6'
+              }}
+            >
+              <Info />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent>
+            <Typography paragraph sx={{ color: '#ffffff' }}>
+              DIGIPIN (Digital Postal Index Number) is a geocoding system for India that converts latitude and longitude coordinates into a unique alphanumeric code.
+            </Typography>
+            <Typography paragraph sx={{ color: '#ffffff' }}>
+              <strong>Features:</strong>
+            </Typography>
+            <ul style={{ color: '#b0b0b0' }}>
+              <li>Search for places in India and navigate directly to them</li>
+              <li>Click anywhere on the map of India to select coordinates</li>
+              <li>Get location names automatically using reverse geocoding</li>
+              <li>Use the current location button to get your exact position</li>
+              <li>Convert coordinates to DIGIPIN and vice versa</li>
+              <li>Copy results to clipboard with one click</li>
+            </ul>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+              Powered by{' '}
+              <a href="https://github.com/rajatguptaa/digipinjs" target="_blank" rel="noopener noreferrer" style={{ color: '#64b5f6' }}>
+                digipinjs
+              </a>
+              {' '}and{' '}
+              <a href="https://nominatim.openstreetmap.org/" target="_blank" rel="noopener noreferrer" style={{ color: '#64b5f6' }}>
+                Nominatim
+              </a>
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setInfoOpen(false)} sx={{ color: '#64b5f6' }}>Close</Button>
+          </DialogActions>
+        </Dialog>
+      </div>
+    </ThemeProvider>
   );
 }
 

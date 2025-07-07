@@ -23,8 +23,7 @@ import {
   createTheme,
   CssBaseline,
   useMediaQuery,
-  Collapse,
-  Icon
+  Collapse
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { 
@@ -511,7 +510,7 @@ function App() {
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [mobilePanelOpen, setMobilePanelOpen] = useState(true);
+  const [mobilePanelOpen] = useState(true);
 
   return (
     <ThemeProvider theme={darkTheme}>
@@ -538,10 +537,6 @@ function App() {
           // MOBILE: Controls on top, map below, collapsible
           <Box sx={{ width: '100vw', maxWidth: '100vw', p: 0, m: 0 }}>
             {/* Toggle button/bar */}
-            <Box sx={{ width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(100,181,246,0.15)', py: 1, cursor: 'pointer', zIndex: 10, position: 'relative' }} onClick={() => setMobilePanelOpen((v) => !v)}>
-              <Icon>{mobilePanelOpen ? 'expand_less' : 'expand_more'}</Icon>
-              <Typography sx={{ color: '#64b5f6', fontWeight: 600, ml: 1 }}>DIGIPIN Controls</Typography>
-            </Box>
             <Collapse in={mobilePanelOpen} timeout="auto" unmountOnExit>
               <Box
                 sx={{

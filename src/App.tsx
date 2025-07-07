@@ -23,8 +23,7 @@ import {
   createTheme,
   CssBaseline,
   useMediaQuery,
-  Collapse,
-  Icon
+  Collapse
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { 
@@ -511,7 +510,7 @@ function App() {
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [mobilePanelOpen, setMobilePanelOpen] = useState(true);
+  const [mobilePanelOpen] = useState(true);
 
   return (
     <ThemeProvider theme={darkTheme}>

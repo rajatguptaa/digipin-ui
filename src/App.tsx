@@ -21,8 +21,12 @@ import {
   Fab,
   ThemeProvider,
   createTheme,
-  CssBaseline
+  CssBaseline,
+  useMediaQuery,
+  Collapse,
+  Icon
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { 
   MyLocation, 
   Info, 
@@ -33,7 +37,7 @@ import {
 } from '@mui/icons-material';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Rectangle } from 'react-leaflet';
 import L from 'leaflet';
-import { getDigiPin, getLatLngFromDigiPin } from 'digipinjs';
+import { getDigiPin, getLatLngFromDigiPin, batchEncode, batchDecode, getDistance, findNearest } from 'digipinjs';
 import './App.css';
 
 // Fix default marker icon issue in leaflet
@@ -292,6 +296,19 @@ function App() {
   const [invalidCoordinates, setInvalidCoordinates] = useState(false);
   const [invalidClickLocation, setInvalidClickLocation] = useState<[number, number] | null>(null);
 
+  // Batch & Geo tab state
+  const [batchInput, setBatchInput] = useState('');
+  const [batchResult, setBatchResult] = useState<any[]>([]);
+  const [batchError, setBatchError] = useState('');
+  const [geoPinA, setGeoPinA] = useState('');
+  const [geoPinB, setGeoPinB] = useState('');
+  const [geoDistance, setGeoDistance] = useState<number|null>(null);
+  const [geoDistanceError, setGeoDistanceError] = useState('');
+  const [nearestBasePin, setNearestBasePin] = useState('');
+  const [nearestList, setNearestList] = useState('');
+  const [nearestResult, setNearestResult] = useState<string|null>(null);
+  const [nearestError, setNearestError] = useState('');
+
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
   };
@@ -418,6 +435,70 @@ function App() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleBatchEncode = () => {
+    setBatchError('');
+    try {
+      const lines = batchInput.split(/\n|,/).map(l => l.trim()).filter(Boolean);
+      // Expecting lines as lat,lng
+      const coords = lines.map(line => {
+        const [lat, lng] = line.split(/\s*[, ]\s*/);
+        return { lat: parseFloat(lat), lng: parseFloat(lng) };
+      });
+      if (coords.some(c => isNaN(c.lat) || isNaN(c.lng))) {
+        setBatchError('Invalid coordinates format. Use: lat,lng per line or comma separated.');
+        setBatchResult([]);
+        return;
+      }
+      const pins = batchEncode(coords);
+      setBatchResult(pins.map((pin, i) => ({ input: `${coords[i].lat},${coords[i].lng}`, result: pin })));
+    } catch (e) {
+      setBatchError('Error in batch encoding.');
+      setBatchResult([]);
+    }
+  };
+  const handleBatchDecode = () => {
+    setBatchError('');
+    try {
+      const lines = batchInput.split(/\n|,/).map(l => l.trim()).filter(Boolean);
+      const pins = lines;
+      const coords = batchDecode(pins);
+      setBatchResult(coords.map((coord, i) => ({ input: pins[i], result: coord ? `${coord.latitude},${coord.longitude}` : 'Invalid DIGIPIN' })));
+    } catch (e) {
+      setBatchError('Error in batch decoding.');
+      setBatchResult([]);
+    }
+  };
+  const handleGeoDistance = () => {
+    setGeoDistanceError('');
+    setGeoDistance(null);
+    try {
+      if (!geoPinA || !geoPinB) {
+        setGeoDistanceError('Please enter two DIGIPINs.');
+        return;
+      }
+      const dist = getDistance(geoPinA.trim(), geoPinB.trim());
+      setGeoDistance(dist);
+    } catch (e) {
+      setGeoDistanceError('Invalid DIGIPIN(s) or error calculating distance.');
+    }
+  };
+  const handleFindNearest = () => {
+    setNearestError('');
+    setNearestResult(null);
+    try {
+      const base = nearestBasePin.trim();
+      const list = nearestList.split(/\n|,/).map(l => l.trim()).filter(Boolean);
+      if (!base || list.length === 0) {
+        setNearestError('Enter a base DIGIPIN and a list of DIGIPINs.');
+        return;
+      }
+      const nearest = findNearest(base, list);
+      setNearestResult(nearest);
+    } catch (e) {
+      setNearestError('Error finding nearest DIGIPIN.');
+    }
+  };
+
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (searchQuery) {
@@ -427,6 +508,10 @@ function App() {
 
     return () => clearTimeout(timeoutId);
   }, [searchQuery]);
+
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(true);
 
   return (
     <ThemeProvider theme={darkTheme}>
@@ -444,339 +529,740 @@ function App() {
           <Tabs value={activeTab} onChange={handleTabChange} centered sx={{ backgroundColor: 'rgba(100, 181, 246, 0.1)' }}>
             <Tab label="Encode" sx={{ color: '#64b5f6' }} />
             <Tab label="Decode" sx={{ color: '#64b5f6' }} />
+            <Tab label="Batch" sx={{ color: '#64b5f6' }} />
+            <Tab label="Geo Utilities" sx={{ color: '#64b5f6' }} />
           </Tabs>
         </AppBar>
 
-        <div style={{ position: 'relative', height: 'calc(100vh - 120px)' }}>
-          {/* Full-screen map */}
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }}>
-            <MapContainer
-              // @ts-ignore: center prop is valid in react-leaflet v5
-              center={mapCenter}
-              zoom={5}
-              style={{ height: '100%', width: '100%' }}
-              minZoom={4}
-              maxBounds={indiaBounds}
-              maxBoundsViscosity={1.0}
-              bounds={indiaBounds}
-            >
-              <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                // @ts-ignore: attribution is a valid prop for TileLayer
-                attribution="&copy; OpenStreetMap contributors"
-              />
-              
-              {/* India boundary overlay */}
-              <Rectangle
-                bounds={indiaBounds}
-                pathOptions={{
-                  color: '#64b5f6',
-                  weight: 2,
-                  fillColor: '#64b5f6',
-                  fillOpacity: 0.1,
-                  dashArray: '5, 5'
+        {isMobile ? (
+          // MOBILE: Controls on top, map below, collapsible
+          <Box sx={{ width: '100vw', maxWidth: '100vw', p: 0, m: 0 }}>
+            {/* Toggle button/bar */}
+            <Box sx={{ width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(100,181,246,0.15)', py: 1, cursor: 'pointer', zIndex: 10, position: 'relative' }} onClick={() => setMobilePanelOpen((v) => !v)}>
+              <Icon>{mobilePanelOpen ? 'expand_less' : 'expand_more'}</Icon>
+              <Typography sx={{ color: '#64b5f6', fontWeight: 600, ml: 1 }}>DIGIPIN Controls</Typography>
+            </Box>
+            <Collapse in={mobilePanelOpen} timeout="auto" unmountOnExit>
+              <Box
+                sx={{
+                  width: '100vw',
+                  maxWidth: '100vw',
+                  borderRadius: 0,
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  backgroundColor: 'background.paper',
+                  mb: 0,
+                  p: 0,
+                  maxHeight: '60vh',
+                  overflowY: 'auto',
                 }}
-              />
-              
-              <LocationSelector 
-                setLat={setEncodeLat} 
-                setLng={setEncodeLng} 
-                setLocationName={setLocationName}
-                setLocationLoading={setLoadingLocation}
-                setInvalidCoordinates={setInvalidCoordinates}
-                setInvalidClickLocation={setInvalidClickLocation}
-              />
-              {selectedLocation && (
-                <Marker position={[selectedLocation.lat, selectedLocation.lng]} />
-              )}
-              {invalidClickLocation && (
-                <Marker 
-                  position={invalidClickLocation}
-                  icon={L.divIcon({
-                    className: 'invalid-marker',
-                    html: '<div style="background-color: #f44336; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>',
-                    iconSize: [20, 20],
-                    iconAnchor: [10, 10]
-                  })}
-                />
-              )}
-              <MapController center={mapCenter} />
-            </MapContainer>
-          </div>
+              >
+                <Tabs
+                  value={activeTab}
+                  onChange={handleTabChange}
+                  variant="fullWidth"
+                  sx={{ backgroundColor: 'rgba(100, 181, 246, 0.1)' }}
+                >
+                  <Tab icon={<LocationOn />} label="Encode" iconPosition="start" sx={{ color: '#64b5f6' }} />
+                  <Tab icon={<Search />} label="Decode" iconPosition="start" sx={{ color: '#64b5f6' }} />
+                  <Tab label="Batch" sx={{ color: '#64b5f6' }} />
+                  <Tab label="Geo Utilities" sx={{ color: '#64b5f6' }} />
+                </Tabs>
+                {/* Encode Tab */}
+                <TabPanel value={activeTab} index={0}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <Typography variant="h6" gutterBottom sx={{ color: '#ffffff' }}>
+                      Convert Coordinates to DIGIPIN
+                    </Typography>
+                    
+                    {/* Invalid Coordinates Warning */}
+                    {invalidCoordinates && (
+                      <Alert severity="warning" sx={{ backgroundColor: 'rgba(255, 152, 0, 0.1)', border: '1px solid rgba(255, 152, 0, 0.3)' }}>
+                        <Typography variant="subtitle2" gutterBottom>
+                          ⚠️ Invalid Location Selected
+                        </Typography>
+                        <Typography variant="body2">
+                          Please click within the blue boundary (India) on the map to select valid coordinates.
+                        </Typography>
+                      </Alert>
+                    )}
+                    
+                    {/* Location Name Display */}
+                    {locationName && (
+                      <Alert severity="info" icon={<LocationOn />} sx={{ backgroundColor: 'rgba(100, 181, 246, 0.1)' }}>
+                        <Typography variant="subtitle2" gutterBottom>
+                          Selected Location:
+                        </Typography>
+                        <Typography variant="body2">
+                          {locationName}
+                        </Typography>
+                      </Alert>
+                    )}
 
-          {/* Floating Control Panel */}
-          <Paper 
-            elevation={8} 
-            sx={{ 
-              position: 'absolute', 
-              top: 20, 
-              right: 20, 
-              width: 400, 
-              maxHeight: 'calc(100vh - 120px)',
-              zIndex: 3,
-              borderRadius: 2,
-              overflow: 'hidden',
-              border: '1px solid rgba(255, 255, 255, 0.1)'
-            }}
-          >
-            <Tabs 
-              value={activeTab} 
-              onChange={handleTabChange} 
-              variant="fullWidth"
-              sx={{ backgroundColor: 'rgba(100, 181, 246, 0.1)' }}
-            >
-              <Tab 
-                icon={<LocationOn />} 
-                label="Encode" 
-                iconPosition="start"
-                sx={{ color: '#64b5f6' }}
-              />
-              <Tab 
-                icon={<Search />} 
-                label="Decode" 
-                iconPosition="start"
-                sx={{ color: '#64b5f6' }}
-              />
-            </Tabs>
+                    {loadingLocation && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1 }}>
+                        <CircularProgress size={16} sx={{ color: '#64b5f6' }} />
+                        <Typography variant="body2" color="text.secondary">
+                          Getting location name...
+                        </Typography>
+                      </Box>
+                    )}
+                    
+                    <TextField
+                      label="Latitude"
+                      placeholder="e.g., 28.6139"
+                      value={encodeLat}
+                      onChange={(e) => setEncodeLat(e.target.value)}
+                      fullWidth
+                      variant="outlined"
+                      size="small"
+                    />
+                    
+                    <TextField
+                      label="Longitude"
+                      placeholder="e.g., 77.2090"
+                      value={encodeLng}
+                      onChange={(e) => setEncodeLng(e.target.value)}
+                      fullWidth
+                      variant="outlined"
+                      size="small"
+                    />
 
-            {/* Encode Tab */}
-            <TabPanel value={activeTab} index={0}>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Typography variant="h6" gutterBottom sx={{ color: '#ffffff' }}>
-                  Convert Coordinates to DIGIPIN
-                </Typography>
-                
-                {/* Invalid Coordinates Warning */}
-                {invalidCoordinates && (
-                  <Alert severity="warning" sx={{ backgroundColor: 'rgba(255, 152, 0, 0.1)', border: '1px solid rgba(255, 152, 0, 0.3)' }}>
-                    <Typography variant="subtitle2" gutterBottom>
-                      ⚠️ Invalid Location Selected
-                    </Typography>
-                    <Typography variant="body2">
-                      Please click within the blue boundary (India) on the map to select valid coordinates.
-                    </Typography>
-                  </Alert>
-                )}
-                
-                {/* Location Name Display */}
-                {locationName && (
-                  <Alert severity="info" icon={<LocationOn />} sx={{ backgroundColor: 'rgba(100, 181, 246, 0.1)' }}>
-                    <Typography variant="subtitle2" gutterBottom>
-                      Selected Location:
-                    </Typography>
-                    <Typography variant="body2">
-                      {locationName}
-                    </Typography>
-                  </Alert>
-                )}
+                    <Button
+                      variant="contained"
+                      onClick={encodeCoordinates}
+                      fullWidth
+                      sx={{ mt: 1, backgroundColor: '#64b5f6', '&:hover': { backgroundColor: '#42a5f5' } }}
+                    >
+                      Generate DIGIPIN
+                    </Button>
 
-                {loadingLocation && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1 }}>
-                    <CircularProgress size={16} sx={{ color: '#64b5f6' }} />
-                    <Typography variant="body2" color="text.secondary">
-                      Getting location name...
-                    </Typography>
+                    {encodeResult && (
+                      <Alert severity="success" sx={{ mt: 2, backgroundColor: 'rgba(129, 199, 132, 0.1)' }}>
+                        <Typography variant="subtitle2" gutterBottom>
+                          DIGIPIN Generated:
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                          <Chip 
+                            label={encodeResult} 
+                            color="primary" 
+                            variant="filled"
+                            sx={{ fontSize: '1.1rem', fontWeight: 'bold', backgroundColor: '#64b5f6' }}
+                          />
+                          <IconButton 
+                            size="small" 
+                            onClick={() => copyToClipboard(encodeResult)}
+                            sx={{ color: '#64b5f6' }}
+                          >
+                            {copied ? <CheckCircle /> : <ContentCopy />}
+                          </IconButton>
+                        </Box>
+                      </Alert>
+                    )}
+
+                    {encodeError && (
+                      <Alert severity="error" sx={{ mt: 2 }}>
+                        {encodeError}
+                      </Alert>
+                    )}
                   </Box>
-                )}
-                
-                <TextField
-                  label="Latitude"
-                  placeholder="e.g., 28.6139"
-                  value={encodeLat}
-                  onChange={(e) => setEncodeLat(e.target.value)}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                />
-                
-                <TextField
-                  label="Longitude"
-                  placeholder="e.g., 77.2090"
-                  value={encodeLng}
-                  onChange={(e) => setEncodeLng(e.target.value)}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                />
+                </TabPanel>
 
-                <Button
-                  variant="contained"
-                  onClick={encodeCoordinates}
-                  fullWidth
-                  sx={{ mt: 1, backgroundColor: '#64b5f6', '&:hover': { backgroundColor: '#42a5f5' } }}
-                >
-                  Generate DIGIPIN
-                </Button>
-
-                {encodeResult && (
-                  <Alert severity="success" sx={{ mt: 2, backgroundColor: 'rgba(129, 199, 132, 0.1)' }}>
-                    <Typography variant="subtitle2" gutterBottom>
-                      DIGIPIN Generated:
+                {/* Decode Tab */}
+                <TabPanel value={activeTab} index={1}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <Typography variant="h6" gutterBottom sx={{ color: '#ffffff' }}>
+                      Convert DIGIPIN to Coordinates
                     </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-                      <Chip 
-                        label={encodeResult} 
-                        color="primary" 
-                        variant="filled"
-                        sx={{ fontSize: '1.1rem', fontWeight: 'bold', backgroundColor: '#64b5f6' }}
-                      />
-                      <IconButton 
-                        size="small" 
-                        onClick={() => copyToClipboard(encodeResult)}
-                        sx={{ color: '#64b5f6' }}
-                      >
-                        {copied ? <CheckCircle /> : <ContentCopy />}
-                      </IconButton>
-                    </Box>
-                  </Alert>
-                )}
+                    
+                    <TextField
+                      label="DIGIPIN"
+                      placeholder="e.g., 39J-438-TJC7"
+                      value={decodeDigipin}
+                      onChange={(e) => setDecodeDigipin(e.target.value)}
+                      fullWidth
+                      variant="outlined"
+                      size="small"
+                    />
 
-                {encodeError && (
-                  <Alert severity="error" sx={{ mt: 2 }}>
-                    {encodeError}
-                  </Alert>
-                )}
-              </Box>
-            </TabPanel>
+                    <Button
+                      variant="contained"
+                      onClick={decodeDigipinCode}
+                      fullWidth
+                      sx={{ mt: 1, backgroundColor: '#64b5f6', '&:hover': { backgroundColor: '#42a5f5' } }}
+                    >
+                      Decode Coordinates
+                    </Button>
 
-            {/* Decode Tab */}
-            <TabPanel value={activeTab} index={1}>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Typography variant="h6" gutterBottom sx={{ color: '#ffffff' }}>
-                  Convert DIGIPIN to Coordinates
-                </Typography>
-                
-                <TextField
-                  label="DIGIPIN"
-                  placeholder="e.g., 39J-438-TJC7"
-                  value={decodeDigipin}
-                  onChange={(e) => setDecodeDigipin(e.target.value)}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                />
+                    {decodeResult && (
+                      <Alert severity="success" sx={{ mt: 2, backgroundColor: 'rgba(129, 199, 132, 0.1)' }}>
+                        <Typography variant="subtitle2" gutterBottom>
+                          Coordinates Found:
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
+                          <Chip 
+                            label={`Latitude: ${decodeResult.lat}`} 
+                            color="primary" 
+                            variant="outlined"
+                            icon={<LocationOn />}
+                            sx={{ borderColor: '#64b5f6', color: '#64b5f6' }}
+                          />
+                          <Chip 
+                            label={`Longitude: ${decodeResult.lng}`} 
+                            color="primary" 
+                            variant="outlined"
+                            icon={<LocationOn />}
+                            sx={{ borderColor: '#64b5f6', color: '#64b5f6' }}
+                          />
+                        </Box>
+                      </Alert>
+                    )}
 
-                <Button
-                  variant="contained"
-                  onClick={decodeDigipinCode}
-                  fullWidth
-                  sx={{ mt: 1, backgroundColor: '#64b5f6', '&:hover': { backgroundColor: '#42a5f5' } }}
-                >
-                  Decode Coordinates
-                </Button>
+                    {decodeError && (
+                      <Alert severity="error" sx={{ mt: 2 }}>
+                        {decodeError}
+                      </Alert>
+                    )}
+                  </Box>
+                </TabPanel>
 
-                {decodeResult && (
-                  <Alert severity="success" sx={{ mt: 2, backgroundColor: 'rgba(129, 199, 132, 0.1)' }}>
-                    <Typography variant="subtitle2" gutterBottom>
-                      Coordinates Found:
-                    </Typography>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
-                      <Chip 
-                        label={`Latitude: ${decodeResult.lat}`} 
-                        color="primary" 
-                        variant="outlined"
-                        icon={<LocationOn />}
-                        sx={{ borderColor: '#64b5f6', color: '#64b5f6' }}
-                      />
-                      <Chip 
-                        label={`Longitude: ${decodeResult.lng}`} 
-                        color="primary" 
-                        variant="outlined"
-                        icon={<LocationOn />}
-                        sx={{ borderColor: '#64b5f6', color: '#64b5f6' }}
-                      />
-                    </Box>
-                  </Alert>
-                )}
-
-                {decodeError && (
-                  <Alert severity="error" sx={{ mt: 2 }}>
-                    {decodeError}
-                  </Alert>
-                )}
-              </Box>
-            </TabPanel>
-          </Paper>
-
-          {/* Search Bar */}
-          <Paper 
-            elevation={4} 
-            sx={{ 
-              position: 'absolute', 
-              top: 20, 
-              left: 20, 
-              width: 350,
-              zIndex: 3,
-              borderRadius: 2,
-              border: '1px solid rgba(255, 255, 255, 0.1)'
-            }}
-          >
-            <Box sx={{ p: 2 }}>
-              <Autocomplete
-                freeSolo
-                options={searchResults}
-                getOptionLabel={(option) => 
-                  typeof option === 'string' ? option : option.display_name
-                }
-                inputValue={searchQuery}
-                onInputChange={(event, newInputValue) => {
-                  setSearchQuery(newInputValue);
-                }}
-                onChange={(event, newValue) => {
-                  if (newValue && typeof newValue !== 'string') {
-                    handleSearchSelect(newValue);
-                  }
-                }}
-                loading={searching}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    placeholder="Search places in India..."
-                    variant="outlined"
-                    size="small"
-                    InputProps={{
-                      ...params.InputProps,
-                      startAdornment: <Search sx={{ mr: 1, color: 'text.secondary' }} />,
-                      endAdornment: (
-                        <>
-                          {searching ? <CircularProgress color="inherit" size={20} /> : null}
-                          {params.InputProps.endAdornment}
-                        </>
-                      ),
+                {/* Batch Tab */}
+                <TabPanel value={activeTab} index={2}>
+                  {/* Batch Tab: Only batch encode/decode UI, no geo utilities */}
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 3,
+                      width: '100%',
+                      maxWidth: { xs: '100vw', sm: 600 },
+                      mx: 'auto',
+                      p: { xs: 1, sm: 2 },
                     }}
+                  >
+                    <Typography variant="h6" sx={{ color: '#ffffff' }}>Batch Encode / Decode</Typography>
+                    <TextField
+                      label="Input (lat,lng per line or DIGIPIN per line)"
+                      placeholder={"28.6139,77.2090\n19.0760,72.8777\nor\n39J-438-TJC7\n4FK-595-8823"}
+                      value={batchInput}
+                      onChange={e => setBatchInput(e.target.value)}
+                      multiline
+                      minRows={4}
+                      fullWidth
+                      variant="outlined"
+                      size="small"
+                      sx={{ fontSize: { xs: '0.95rem', sm: '1rem' } }}
+                    />
+                    <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                      <Button variant="contained" onClick={handleBatchEncode} sx={{ backgroundColor: '#64b5f6', width: { xs: '100%', sm: 'fit-content' } }}>Batch Encode</Button>
+                      <Button variant="contained" onClick={handleBatchDecode} sx={{ backgroundColor: '#64b5f6', width: { xs: '100%', sm: 'fit-content' } }}>Batch Decode</Button>
+                    </Box>
+                    {batchError && <Alert severity="error">{batchError}</Alert>}
+                    {batchResult.length > 0 && (
+                      <Box sx={{ overflowX: 'auto' }}>
+                        <Typography variant="subtitle2" sx={{ color: '#ffffff' }}>Results:</Typography>
+                        <Paper sx={{ mt: 1, p: 1, backgroundColor: 'rgba(100,181,246,0.05)', width: '100%', minWidth: 0 }}>
+                          <table style={{ width: '100%', color: '#fff', fontSize: '0.95rem', wordBreak: 'break-all' }}>
+                            <thead>
+                              <tr><th style={{ textAlign: 'left' }}>Input</th><th style={{ textAlign: 'left' }}>Result</th></tr>
+                            </thead>
+                            <tbody>
+                              {batchResult.map((row, i) => (
+                                <tr key={i}><td>{row.input}</td><td>{typeof row.result === 'string' ? row.result : JSON.stringify(row.result)}</td></tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </Paper>
+                      </Box>
+                    )}
+                  </Box>
+                </TabPanel>
+
+                {/* Geo Utilities Tab */}
+                <TabPanel value={activeTab} index={3}>
+                  {/* Geo Utilities Tab: Only geo utilities UI */}
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 3,
+                      width: '100%',
+                      maxWidth: { xs: '100vw', sm: 600 },
+                      mx: 'auto',
+                      p: { xs: 1, sm: 2 },
+                    }}
+                  >
+                    <Typography variant="h6" sx={{ color: '#ffffff' }}>Geo Utilities</Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%' }}>
+                      <Typography variant="subtitle2" sx={{ color: '#ffffff' }}>Distance Between Two DIGIPINs</Typography>
+                      <TextField label="DIGIPIN A" value={geoPinA} onChange={e => setGeoPinA(e.target.value)} size="small" fullWidth sx={{ fontSize: { xs: '0.95rem', sm: '1rem' } }} />
+                      <TextField label="DIGIPIN B" value={geoPinB} onChange={e => setGeoPinB(e.target.value)} size="small" fullWidth sx={{ fontSize: { xs: '0.95rem', sm: '1rem' } }} />
+                      <Button variant="contained" onClick={handleGeoDistance} sx={{ backgroundColor: '#64b5f6', width: { xs: '100%', sm: 'fit-content' }, alignSelf: { xs: 'stretch', sm: 'flex-start' } }}>Calculate Distance</Button>
+                      {geoDistanceError && <Alert severity="error">{geoDistanceError}</Alert>}
+                      {geoDistance !== null && <Alert severity="info">Distance: {geoDistance} meters</Alert>}
+                    </Box>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 3, width: '100%' }}>
+                      <Typography variant="subtitle2" sx={{ color: '#ffffff' }}>Find Nearest DIGIPIN</Typography>
+                      <TextField label="Base DIGIPIN" value={nearestBasePin} onChange={e => setNearestBasePin(e.target.value)} size="small" fullWidth sx={{ fontSize: { xs: '0.95rem', sm: '1rem' } }} />
+                      <TextField label="List of DIGIPINs (comma or line separated)" value={nearestList} onChange={e => setNearestList(e.target.value)} size="small" multiline minRows={2} fullWidth sx={{ fontSize: { xs: '0.95rem', sm: '1rem' } }} />
+                      <Button variant="contained" onClick={handleFindNearest} sx={{ backgroundColor: '#64b5f6', width: { xs: '100%', sm: 'fit-content' }, alignSelf: { xs: 'stretch', sm: 'flex-start' } }}>Find Nearest</Button>
+                      {nearestError && <Alert severity="error">{nearestError}</Alert>}
+                      {nearestResult && <Alert severity="info">Nearest DIGIPIN: {nearestResult}</Alert>}
+                    </Box>
+                  </Box>
+                </TabPanel>
+              </Box>
+            </Collapse>
+            <Box sx={{ width: '100vw', height: mobilePanelOpen ? '40vh' : 'calc(100vh - 56px)', minHeight: 200, maxHeight: mobilePanelOpen ? '40vh' : 'calc(100vh - 56px)', position: 'relative', mt: 0, transition: 'height 0.3s' }}>
+              <MapContainer
+                center={mapCenter}
+                zoom={5}
+                style={{ height: '100%', width: '100%', minHeight: 400 }}
+                minZoom={4}
+                maxBounds={indiaBounds}
+                maxBoundsViscosity={1.0}
+                bounds={indiaBounds}
+              >
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  // @ts-ignore: attribution is a valid prop for TileLayer
+                  attribution="&copy; OpenStreetMap contributors"
+                />
+                
+                {/* India boundary overlay */}
+                <Rectangle
+                  bounds={indiaBounds}
+                  pathOptions={{
+                    color: '#64b5f6',
+                    weight: 2,
+                    fillColor: '#64b5f6',
+                    fillOpacity: 0.1,
+                    dashArray: '5, 5'
+                  }}
+                />
+                
+                <LocationSelector 
+                  setLat={setEncodeLat} 
+                  setLng={setEncodeLng} 
+                  setLocationName={setLocationName}
+                  setLocationLoading={setLoadingLocation}
+                  setInvalidCoordinates={setInvalidCoordinates}
+                  setInvalidClickLocation={setInvalidClickLocation}
+                />
+                {selectedLocation && (
+                  <Marker position={[selectedLocation.lat, selectedLocation.lng]} />
+                )}
+                {invalidClickLocation && (
+                  <Marker 
+                    position={invalidClickLocation}
+                    icon={L.divIcon({
+                      className: 'invalid-marker',
+                      html: '<div style="background-color: #f44336; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>',
+                      iconSize: [20, 20],
+                      iconAnchor: [10, 10]
+                    })}
                   />
                 )}
-                renderOption={(props, option) => (
-                  <Box component="li" {...props}>
-                    <LocationOn sx={{ mr: 1, color: 'text.secondary' }} />
-                    <Typography variant="body2" noWrap>
-                      {option.display_name}
-                    </Typography>
-                  </Box>
-                )}
-                noOptionsText="No places found"
-                sx={{ width: '100%' }}
-              />
+                <MapController center={mapCenter} />
+              </MapContainer>
             </Box>
-          </Paper>
+          </Box>
+        ) : (
+          // DESKTOP: Two-column layout, panel fixed right, map left
+          <Box sx={{ display: 'flex', flexDirection: 'row', height: 'calc(100vh - 64px)', width: '100vw' }}>
+            {/* Map area */}
+            <Box sx={{ flex: 1, minWidth: 0, height: '100%', minHeight: 400, position: 'relative' }}>
+              <MapContainer
+                center={mapCenter}
+                zoom={5}
+                style={{ height: '100%', width: '100%', minHeight: 400 }}
+                minZoom={4}
+                maxBounds={indiaBounds}
+                maxBoundsViscosity={1.0}
+                bounds={indiaBounds}
+              >
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  // @ts-ignore: attribution is a valid prop for TileLayer
+                  attribution="&copy; OpenStreetMap contributors"
+                />
+                
+                {/* India boundary overlay */}
+                <Rectangle
+                  bounds={indiaBounds}
+                  pathOptions={{
+                    color: '#64b5f6',
+                    weight: 2,
+                    fillColor: '#64b5f6',
+                    fillOpacity: 0.1,
+                    dashArray: '5, 5'
+                  }}
+                />
+                
+                <LocationSelector 
+                  setLat={setEncodeLat} 
+                  setLng={setEncodeLng} 
+                  setLocationName={setLocationName}
+                  setLocationLoading={setLoadingLocation}
+                  setInvalidCoordinates={setInvalidCoordinates}
+                  setInvalidClickLocation={setInvalidClickLocation}
+                />
+                {selectedLocation && (
+                  <Marker position={[selectedLocation.lat, selectedLocation.lng]} />
+                )}
+                {invalidClickLocation && (
+                  <Marker 
+                    position={invalidClickLocation}
+                    icon={L.divIcon({
+                      className: 'invalid-marker',
+                      html: '<div style="background-color: #f44336; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>',
+                      iconSize: [20, 20],
+                      iconAnchor: [10, 10]
+                    })}
+                  />
+                )}
+                <MapController center={mapCenter} />
+              </MapContainer>
+            </Box>
+            {/* Control panel */}
+            <Box sx={{ width: 400, maxWidth: 400, minWidth: 320, height: '100%', backgroundColor: 'background.paper', borderLeft: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+              <Box sx={{ width: '100%', height: '100%', overflowY: 'auto', p: 0 }}>
+                <Tabs
+                  value={activeTab}
+                  onChange={handleTabChange}
+                  variant="fullWidth"
+                  sx={{ backgroundColor: 'rgba(100, 181, 246, 0.1)' }}
+                >
+                  <Tab icon={<LocationOn />} label="Encode" iconPosition="start" sx={{ color: '#64b5f6' }} />
+                  <Tab icon={<Search />} label="Decode" iconPosition="start" sx={{ color: '#64b5f6' }} />
+                  <Tab label="Batch" sx={{ color: '#64b5f6' }} />
+                  <Tab label="Geo Utilities" sx={{ color: '#64b5f6' }} />
+                </Tabs>
+                {/* Encode Tab */}
+                <TabPanel value={activeTab} index={0}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <Typography variant="h6" gutterBottom sx={{ color: '#ffffff' }}>
+                      Convert Coordinates to DIGIPIN
+                    </Typography>
+                    
+                    {/* Invalid Coordinates Warning */}
+                    {invalidCoordinates && (
+                      <Alert severity="warning" sx={{ backgroundColor: 'rgba(255, 152, 0, 0.1)', border: '1px solid rgba(255, 152, 0, 0.3)' }}>
+                        <Typography variant="subtitle2" gutterBottom>
+                          ⚠️ Invalid Location Selected
+                        </Typography>
+                        <Typography variant="body2">
+                          Please click within the blue boundary (India) on the map to select valid coordinates.
+                        </Typography>
+                      </Alert>
+                    )}
+                    
+                    {/* Location Name Display */}
+                    {locationName && (
+                      <Alert severity="info" icon={<LocationOn />} sx={{ backgroundColor: 'rgba(100, 181, 246, 0.1)' }}>
+                        <Typography variant="subtitle2" gutterBottom>
+                          Selected Location:
+                        </Typography>
+                        <Typography variant="body2">
+                          {locationName}
+                        </Typography>
+                      </Alert>
+                    )}
 
-          {/* Floating Action Button for Current Location */}
-          <Fab
-            color="primary"
-            aria-label="current location"
-            sx={{
-              position: 'absolute',
-              bottom: 20,
-              left: 20,
-              zIndex: 3,
-              backgroundColor: '#64b5f6',
-              '&:hover': { backgroundColor: '#42a5f5' },
-            }}
-            onClick={getCurrentLocation}
-          >
-            <MyLocation />
-          </Fab>
-        </div>
+                    {loadingLocation && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1 }}>
+                        <CircularProgress size={16} sx={{ color: '#64b5f6' }} />
+                        <Typography variant="body2" color="text.secondary">
+                          Getting location name...
+                        </Typography>
+                      </Box>
+                    )}
+                    
+                    <TextField
+                      label="Latitude"
+                      placeholder="e.g., 28.6139"
+                      value={encodeLat}
+                      onChange={(e) => setEncodeLat(e.target.value)}
+                      fullWidth
+                      variant="outlined"
+                      size="small"
+                    />
+                    
+                    <TextField
+                      label="Longitude"
+                      placeholder="e.g., 77.2090"
+                      value={encodeLng}
+                      onChange={(e) => setEncodeLng(e.target.value)}
+                      fullWidth
+                      variant="outlined"
+                      size="small"
+                    />
+
+                    <Button
+                      variant="contained"
+                      onClick={encodeCoordinates}
+                      fullWidth
+                      sx={{ mt: 1, backgroundColor: '#64b5f6', '&:hover': { backgroundColor: '#42a5f5' } }}
+                    >
+                      Generate DIGIPIN
+                    </Button>
+
+                    {encodeResult && (
+                      <Alert severity="success" sx={{ mt: 2, backgroundColor: 'rgba(129, 199, 132, 0.1)' }}>
+                        <Typography variant="subtitle2" gutterBottom>
+                          DIGIPIN Generated:
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                          <Chip 
+                            label={encodeResult} 
+                            color="primary" 
+                            variant="filled"
+                            sx={{ fontSize: '1.1rem', fontWeight: 'bold', backgroundColor: '#64b5f6' }}
+                          />
+                          <IconButton 
+                            size="small" 
+                            onClick={() => copyToClipboard(encodeResult)}
+                            sx={{ color: '#64b5f6' }}
+                          >
+                            {copied ? <CheckCircle /> : <ContentCopy />}
+                          </IconButton>
+                        </Box>
+                      </Alert>
+                    )}
+
+                    {encodeError && (
+                      <Alert severity="error" sx={{ mt: 2 }}>
+                        {encodeError}
+                      </Alert>
+                    )}
+                  </Box>
+                </TabPanel>
+
+                {/* Decode Tab */}
+                <TabPanel value={activeTab} index={1}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <Typography variant="h6" gutterBottom sx={{ color: '#ffffff' }}>
+                      Convert DIGIPIN to Coordinates
+                    </Typography>
+                    
+                    <TextField
+                      label="DIGIPIN"
+                      placeholder="e.g., 39J-438-TJC7"
+                      value={decodeDigipin}
+                      onChange={(e) => setDecodeDigipin(e.target.value)}
+                      fullWidth
+                      variant="outlined"
+                      size="small"
+                    />
+
+                    <Button
+                      variant="contained"
+                      onClick={decodeDigipinCode}
+                      fullWidth
+                      sx={{ mt: 1, backgroundColor: '#64b5f6', '&:hover': { backgroundColor: '#42a5f5' } }}
+                    >
+                      Decode Coordinates
+                    </Button>
+
+                    {decodeResult && (
+                      <Alert severity="success" sx={{ mt: 2, backgroundColor: 'rgba(129, 199, 132, 0.1)' }}>
+                        <Typography variant="subtitle2" gutterBottom>
+                          Coordinates Found:
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
+                          <Chip 
+                            label={`Latitude: ${decodeResult.lat}`} 
+                            color="primary" 
+                            variant="outlined"
+                            icon={<LocationOn />}
+                            sx={{ borderColor: '#64b5f6', color: '#64b5f6' }}
+                          />
+                          <Chip 
+                            label={`Longitude: ${decodeResult.lng}`} 
+                            color="primary" 
+                            variant="outlined"
+                            icon={<LocationOn />}
+                            sx={{ borderColor: '#64b5f6', color: '#64b5f6' }}
+                          />
+                        </Box>
+                      </Alert>
+                    )}
+
+                    {decodeError && (
+                      <Alert severity="error" sx={{ mt: 2 }}>
+                        {decodeError}
+                      </Alert>
+                    )}
+                  </Box>
+                </TabPanel>
+
+                {/* Batch Tab */}
+                <TabPanel value={activeTab} index={2}>
+                  {/* Batch Tab: Only batch encode/decode UI, no geo utilities */}
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 3,
+                      width: '100%',
+                      maxWidth: { xs: '100vw', sm: 600 },
+                      mx: 'auto',
+                      p: { xs: 1, sm: 2 },
+                    }}
+                  >
+                    <Typography variant="h6" sx={{ color: '#ffffff' }}>Batch Encode / Decode</Typography>
+                    <TextField
+                      label="Input (lat,lng per line or DIGIPIN per line)"
+                      placeholder={"28.6139,77.2090\n19.0760,72.8777\nor\n39J-438-TJC7\n4FK-595-8823"}
+                      value={batchInput}
+                      onChange={e => setBatchInput(e.target.value)}
+                      multiline
+                      minRows={4}
+                      fullWidth
+                      variant="outlined"
+                      size="small"
+                      sx={{ fontSize: { xs: '0.95rem', sm: '1rem' } }}
+                    />
+                    <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                      <Button variant="contained" onClick={handleBatchEncode} sx={{ backgroundColor: '#64b5f6', width: { xs: '100%', sm: 'fit-content' } }}>Batch Encode</Button>
+                      <Button variant="contained" onClick={handleBatchDecode} sx={{ backgroundColor: '#64b5f6', width: { xs: '100%', sm: 'fit-content' } }}>Batch Decode</Button>
+                    </Box>
+                    {batchError && <Alert severity="error">{batchError}</Alert>}
+                    {batchResult.length > 0 && (
+                      <Box sx={{ overflowX: 'auto' }}>
+                        <Typography variant="subtitle2" sx={{ color: '#ffffff' }}>Results:</Typography>
+                        <Paper sx={{ mt: 1, p: 1, backgroundColor: 'rgba(100,181,246,0.05)', width: '100%', minWidth: 0 }}>
+                          <table style={{ width: '100%', color: '#fff', fontSize: '0.95rem', wordBreak: 'break-all' }}>
+                            <thead>
+                              <tr><th style={{ textAlign: 'left' }}>Input</th><th style={{ textAlign: 'left' }}>Result</th></tr>
+                            </thead>
+                            <tbody>
+                              {batchResult.map((row, i) => (
+                                <tr key={i}><td>{row.input}</td><td>{typeof row.result === 'string' ? row.result : JSON.stringify(row.result)}</td></tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </Paper>
+                      </Box>
+                    )}
+                  </Box>
+                </TabPanel>
+
+                {/* Geo Utilities Tab */}
+                <TabPanel value={activeTab} index={3}>
+                  {/* Geo Utilities Tab: Only geo utilities UI */}
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 3,
+                      width: '100%',
+                      maxWidth: { xs: '100vw', sm: 600 },
+                      mx: 'auto',
+                      p: { xs: 1, sm: 2 },
+                    }}
+                  >
+                    <Typography variant="h6" sx={{ color: '#ffffff' }}>Geo Utilities</Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%' }}>
+                      <Typography variant="subtitle2" sx={{ color: '#ffffff' }}>Distance Between Two DIGIPINs</Typography>
+                      <TextField label="DIGIPIN A" value={geoPinA} onChange={e => setGeoPinA(e.target.value)} size="small" fullWidth sx={{ fontSize: { xs: '0.95rem', sm: '1rem' } }} />
+                      <TextField label="DIGIPIN B" value={geoPinB} onChange={e => setGeoPinB(e.target.value)} size="small" fullWidth sx={{ fontSize: { xs: '0.95rem', sm: '1rem' } }} />
+                      <Button variant="contained" onClick={handleGeoDistance} sx={{ backgroundColor: '#64b5f6', width: { xs: '100%', sm: 'fit-content' }, alignSelf: { xs: 'stretch', sm: 'flex-start' } }}>Calculate Distance</Button>
+                      {geoDistanceError && <Alert severity="error">{geoDistanceError}</Alert>}
+                      {geoDistance !== null && <Alert severity="info">Distance: {geoDistance} meters</Alert>}
+                    </Box>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 3, width: '100%' }}>
+                      <Typography variant="subtitle2" sx={{ color: '#ffffff' }}>Find Nearest DIGIPIN</Typography>
+                      <TextField label="Base DIGIPIN" value={nearestBasePin} onChange={e => setNearestBasePin(e.target.value)} size="small" fullWidth sx={{ fontSize: { xs: '0.95rem', sm: '1rem' } }} />
+                      <TextField label="List of DIGIPINs (comma or line separated)" value={nearestList} onChange={e => setNearestList(e.target.value)} size="small" multiline minRows={2} fullWidth sx={{ fontSize: { xs: '0.95rem', sm: '1rem' } }} />
+                      <Button variant="contained" onClick={handleFindNearest} sx={{ backgroundColor: '#64b5f6', width: { xs: '100%', sm: 'fit-content' }, alignSelf: { xs: 'stretch', sm: 'flex-start' } }}>Find Nearest</Button>
+                      {nearestError && <Alert severity="error">{nearestError}</Alert>}
+                      {nearestResult && <Alert severity="info">Nearest DIGIPIN: {nearestResult}</Alert>}
+                    </Box>
+                  </Box>
+                </TabPanel>
+              </Box>
+            </Box>
+          </Box>
+        )}
+
+        {/* Search Bar */}
+        <Paper 
+          elevation={4} 
+          sx={{ 
+            position: 'absolute', 
+            top: 20, 
+            left: 20, 
+            width: 350,
+            zIndex: 3,
+            borderRadius: 2,
+            border: '1px solid rgba(255, 255, 255, 0.1)'
+          }}
+        >
+          <Box sx={{ p: 2 }}>
+            <Autocomplete
+              freeSolo
+              options={searchResults}
+              getOptionLabel={(option) => 
+                typeof option === 'string' ? option : option.display_name
+              }
+              inputValue={searchQuery}
+              onInputChange={(event, newInputValue) => {
+                setSearchQuery(newInputValue);
+              }}
+              onChange={(event, newValue) => {
+                if (newValue && typeof newValue !== 'string') {
+                  handleSearchSelect(newValue);
+                }
+              }}
+              loading={searching}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="Search places in India..."
+                  variant="outlined"
+                  size="small"
+                  InputProps={{
+                    ...params.InputProps,
+                    startAdornment: <Search sx={{ mr: 1, color: 'text.secondary' }} />,
+                    endAdornment: (
+                      <>
+                        {searching ? <CircularProgress color="inherit" size={20} /> : null}
+                        {params.InputProps.endAdornment}
+                      </>
+                    ),
+                  }}
+                />
+              )}
+              renderOption={(props, option) => (
+                <Box component="li" {...props}>
+                  <LocationOn sx={{ mr: 1, color: 'text.secondary' }} />
+                  <Typography variant="body2" noWrap>
+                    {option.display_name}
+                  </Typography>
+                </Box>
+              )}
+              noOptionsText="No places found"
+              sx={{ width: '100%' }}
+            />
+          </Box>
+        </Paper>
+
+        {/* Floating Action Button for Current Location */}
+        <Fab
+          color="primary"
+          aria-label="current location"
+          sx={{
+            position: 'absolute',
+            bottom: 20,
+            left: 20,
+            zIndex: 3,
+            backgroundColor: '#64b5f6',
+            '&:hover': { backgroundColor: '#42a5f5' },
+          }}
+          onClick={getCurrentLocation}
+        >
+          <MyLocation />
+        </Fab>
 
         {/* Info Dialog */}
         <Dialog open={infoOpen} onClose={() => setInfoOpen(false)} maxWidth="sm" fullWidth>

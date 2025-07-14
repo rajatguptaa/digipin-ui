@@ -4,7 +4,7 @@ A modern, responsive web application for encoding and decoding India's Digital P
 
 ## 🌐 Live Demo
 
-**[Try the DIGIPIN UI here](https://digipin-ui.netlify.app/)**
+**[Try the DIGIPIN UI here](https://digipin-ui.onrender.com/)**
 
 ## 📖 About DIGIPIN
 

@@ -367,18 +367,6 @@ function App() {
     }
   };
 
-  const digipinToLatLng = (digipin: string): [number, number] | null => {
-    const coordinates = getLatLngFromDigiPin(digipin);
-    if (
-      coordinates &&
-      typeof coordinates.latitude === "number" &&
-      typeof coordinates.longitude === "number"
-    ) {
-      return [coordinates.latitude, coordinates.longitude];
-    }
-    return null;
-  };
-
   const decodeDigipinCode = () => {
     try {
       setDecodeError("");

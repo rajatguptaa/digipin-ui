@@ -41,8 +41,6 @@ import {
   useMapEvents,
   useMap,
   Rectangle,
-  Popup,
-  Polyline,
 } from "react-leaflet";
 import L from "leaflet";
 import {

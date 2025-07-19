@@ -53,6 +53,8 @@ import {
 } from "digipinjs";
 import "./App.css";
 import { MapTabPanel } from "./components/MapRouter";
+import { OlaMapPanel } from "./components/OlaMapPanel";
+import OlaMap from "./components/OlaMap";
 
 // Fix default marker icon issue in leaflet
 // @ts-ignore
@@ -330,6 +332,9 @@ function App() {
   const [nearestList, setNearestList] = useState("");
   const [nearestResult, setNearestResult] = useState<string | null>(null);
   const [nearestError, setNearestError] = useState("");
+
+  // Add state for map provider toggle
+  const [useOlaMap, setUseOlaMap] = useState(false);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
@@ -1192,63 +1197,65 @@ function App() {
                 position: "relative",
               }}
             >
-            {geoDistance ? (
-                      <MapTabPanel geoPinA={geoPinA} geoPinB={geoPinB} />
-                    ) : (
-                      <MapContainer
-                center={mapCenter}
-                zoom={5}
-                style={{ height: "100%", width: "100%", minHeight: 400 }}
-                minZoom={4}
-                maxBounds={indiaBounds}
-                maxBoundsViscosity={1.0}
-                bounds={indiaBounds}
-              >
-                <TileLayer
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  // @ts-ignore: attribution is a valid prop for TileLayer
-                  attribution="&copy; OpenStreetMap contributors"
-                />
-
-                {/* India boundary overlay */}
-                <Rectangle
+            {activeTab === 3 && (
+              useOlaMap ? (
+                <OlaMapPanel geoPinA={geoPinA} geoPinB={geoPinB} />
+              ) : (
+                <MapContainer
+                  center={mapCenter}
+                  zoom={5}
+                  style={{ height: "100%", width: "100%", minHeight: 400 }}
+                  minZoom={4}
+                  maxBounds={indiaBounds}
+                  maxBoundsViscosity={1.0}
                   bounds={indiaBounds}
-                  pathOptions={{
-                    color: "#64b5f6",
-                    weight: 2,
-                    fillColor: "#64b5f6",
-                    fillOpacity: 0.1,
-                    dashArray: "5, 5",
-                  }}
-                />
+                >
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    // @ts-ignore: attribution is a valid prop for TileLayer
+                    attribution="&copy; OpenStreetMap contributors"
+                  />
 
-                <LocationSelector
-                  setLat={setEncodeLat}
-                  setLng={setEncodeLng}
-                  setLocationName={setLocationName}
-                  setLocationLoading={setLoadingLocation}
-                  setInvalidCoordinates={setInvalidCoordinates}
-                  setInvalidClickLocation={setInvalidClickLocation}
-                />
-                {selectedLocation && (
-                  <Marker
-                    position={[selectedLocation.lat, selectedLocation.lng]}
+                  {/* India boundary overlay */}
+                  <Rectangle
+                    bounds={indiaBounds}
+                    pathOptions={{
+                      color: "#64b5f6",
+                      weight: 2,
+                      fillColor: "#64b5f6",
+                      fillOpacity: 0.1,
+                      dashArray: "5, 5",
+                    }}
                   />
-                )}
-                {invalidClickLocation && (
-                  <Marker
-                    position={invalidClickLocation}
-                    icon={L.divIcon({
-                      className: "invalid-marker",
-                      html: '<div style="background-color: #f44336; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>',
-                      iconSize: [20, 20],
-                      iconAnchor: [10, 10],
-                    })}
+
+                  <LocationSelector
+                    setLat={setEncodeLat}
+                    setLng={setEncodeLng}
+                    setLocationName={setLocationName}
+                    setLocationLoading={setLoadingLocation}
+                    setInvalidCoordinates={setInvalidCoordinates}
+                    setInvalidClickLocation={setInvalidClickLocation}
                   />
-                )}
-                <MapController center={mapCenter} />
-              </MapContainer>
-                    )}
+                  {selectedLocation && (
+                    <Marker
+                      position={[selectedLocation.lat, selectedLocation.lng]}
+                    />
+                  )}
+                  {invalidClickLocation && (
+                    <Marker
+                      position={invalidClickLocation}
+                      icon={L.divIcon({
+                        className: "invalid-marker",
+                        html: '<div style="background-color: #f44336; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>',
+                        iconSize: [20, 20],
+                        iconAnchor: [10, 10],
+                      })}
+                    />
+                  )}
+                  <MapController center={mapCenter} />
+                </MapContainer>
+              )
+            )}
             
               
             </Box>
@@ -1626,7 +1633,6 @@ function App() {
 
                 {/* Geo Utilities Tab */}
                 <TabPanel value={activeTab} index={3}>
-                  {/* Geo Utilities Tab */}
                   <Box
                     sx={{
                       display: "flex",
@@ -1641,6 +1647,24 @@ function App() {
                     <Typography variant="h6" sx={{ color: "#ffffff" }}>
                       Geo Utilities
                     </Typography>
+
+                    {/* Toggle for map provider */}
+                    <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Button
+                        variant={useOlaMap ? 'contained' : 'outlined'}
+                        onClick={() => setUseOlaMap(false)}
+                        sx={{ backgroundColor: !useOlaMap ? '#64b5f6' : undefined }}
+                      >
+                        Default Map
+                      </Button>
+                      <Button
+                        variant={useOlaMap ? 'outlined' : 'contained'}
+                        onClick={() => setUseOlaMap(true)}
+                        sx={{ backgroundColor: useOlaMap ? '#64b5f6' : undefined }}
+                      >
+                        Ola Maps (Beta)
+                      </Button>
+                    </Box>
 
                     {/* Distance Between DIGIPINs */}
                     <Box
@@ -1704,7 +1728,7 @@ function App() {
                         width: "100%",
                       }}
                     >
-                      <Typography variant="subtitle2" sx={{ color: "#9b7878ff" }}>
+                      <Typography variant="subtitle2" sx={{ color: "#ffffff" }}>
                         Find Nearest DIGIPIN
                       </Typography>
                       <TextField
@@ -1804,14 +1828,17 @@ function App() {
                   }}
                 />
               )}
-              renderOption={(props, option) => (
-                <Box component="li" {...props}>
-                  <LocationOn sx={{ mr: 1, color: "text.secondary" }} />
-                  <Typography variant="body2" noWrap>
-                    {option.display_name}
-                  </Typography>
-                </Box>
-              )}
+              renderOption={(props, option) => {
+                const { key, ...rest } = props;
+                return (
+                  <Box component="li" key={key} {...rest}>
+                    <LocationOn sx={{ mr: 1, color: "text.secondary" }} />
+                    <Typography variant="body2" noWrap>
+                      {option.display_name}
+                    </Typography>
+                  </Box>
+                );
+              }}
               noOptionsText="No places found"
               sx={{ width: "100%" }}
             />

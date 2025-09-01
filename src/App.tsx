@@ -897,50 +897,52 @@ function App() {
                   <Marker position={[selectedLocation.lat, selectedLocation.lng]} draggable eventHandlers={{ dragend: onMarkerDragEnd }} />
                 )}
                 {accuracyCenter && accuracyRadius && (
-                  <Circle center={accuracyCenter} radius={accuracyRadius} pathOptions={{ color: "#64b5f6", weight: 1, fillColor: "#64b5f6", fillOpacity: 0.1 }} />
+                  <Circle center={accuracyCenter as any} radius={accuracyRadius as number} pathOptions={{ color: "#64b5f6", weight: 1, fillColor: "#64b5f6", fillOpacity: 0.1 }} />
                 )}
-                {measurePoints.length > 0 && <Marker position={measurePoints[0]} />}
-                {measurePoints.length === 2 && (<>
-                  <Marker position={measurePoints[1]} />
-                  <Polyline positions={measurePoints} pathOptions={{ color: "#ffeb3b", weight: 3 }} />
-                </>)}
+                {measurePoints.length > 0 && <Marker position={measurePoints[0] as any} />}
+                {measurePoints.length === 2 && (
+                  <>
+                    <Marker position={measurePoints[1] as any} />
+                    <Polyline positions={measurePoints as any} pathOptions={{ color: "#ffeb3b", weight: 3 }} />
+                  </>
+                )}
                 <MeasureToolOnMap enabled={measureEnabled} points={measurePoints} onChange={(pts, dist) => { setMeasurePoints(pts); setMeasureDistance(dist); }} />
                 {invalidClickLocation && (
-                  <Marker position={invalidClickLocation} icon={L.divIcon({ className: "invalid-marker", html: '<div style=\"background-color: #f44336; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);\"></div>', iconSize: [20, 20], iconAnchor: [10, 10] })} />
+                  <Marker position={invalidClickLocation as any} icon={L.divIcon({ className: "invalid-marker", html: '<div style="background-color: #f44336; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>', iconSize: [20, 20], iconAnchor: [10, 10] })} />
                 )}
                 <MapController center={mapCenter} />
               </MapContainer>
             )}
-                )}
-                {measurePoints.length === 2 && (
-                  <>
-                    <Marker position={measurePoints[1]} />
-                    <Polyline positions={measurePoints} pathOptions={{ color: "#ffeb3b", weight: 3 }} />
-                  </>
-                )}
-                <MeasureToolOnMap
-                  enabled={measureEnabled}
-                  points={measurePoints}
-                  onChange={(pts, dist) => {
-                    setMeasurePoints(pts);
-                    setMeasureDistance(dist);
-                  }}
-                />
-                {invalidClickLocation && (
-                  <Marker
-                    position={invalidClickLocation}
-                    icon={L.divIcon({
-                      className: "invalid-marker",
-                      html: '<div style="background-color: #f44336; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>',
-                      iconSize: [20, 20],
-                      iconAnchor: [10, 10],
-                    })}
-                  />
-                )}
-                <MapController center={mapCenter} />
-              </MapContainer>
-                    )}
-            </Box>
+            <Fab
+              color="default"
+              aria-label="open tools"
+              sx={{ position: "absolute", bottom: { xs: 'calc(env(safe-area-inset-bottom) + 20px)', sm: 20 }, left: '50%', transform: 'translateX(-50%)', zIndex: 2000, backgroundColor: '#2b2b2b', '&:hover': { backgroundColor: '#3a3a3a' } }}
+              onClick={() => setMobileDrawerOpen(true)}
+            >
+              <SpeedDialIcon />
+            </Fab>
+            <MobileBottomSheet
+              open={mobileDrawerOpen}
+              onClose={() => setMobileDrawerOpen(false)}
+              activeTab={activeTab}
+              onTabChange={(v) => setActiveTab(v)}
+              encodeLat={encodeLat}
+              encodeLng={encodeLng}
+              setEncodeLat={setEncodeLat}
+              setEncodeLng={setEncodeLng}
+              encodeCoordinates={encodeCoordinates}
+              encodeResult={encodeResult}
+              encodeError={encodeError}
+              locationName={locationName}
+              loadingLocation={loadingLocation}
+              selectedLocation={selectedLocation}
+              copyToClipboard={copyToClipboard}
+              decodeDigipin={decodeDigipin}
+              setDecodeDigipin={setDecodeDigipin}
+              decodeDigipinCode={decodeDigipinCode}
+              decodeResult={decodeResult}
+              decodeError={decodeError}
+            />
           </Box>
         ) : (
           // DESKTOP: Two-column layout, panel fixed right, map left
@@ -1826,8 +1828,6 @@ function App() {
                 </TabPanel>
               </Box>
             </Box>
-            )}
-        )}
 
         {/* Search Bar */}
         <Paper

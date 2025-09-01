@@ -2340,11 +2340,13 @@ function App() {
           aria-label="current location"
           sx={{
             position: "absolute",
-            bottom: 20,
-            left: 20,
+            bottom: { xs: 'calc(env(safe-area-inset-bottom) + 20px)', sm: 20 },
+            right: { xs: 20, sm: 'auto' },
+            left: { xs: 'auto', sm: 20 },
             zIndex: 2000,
             backgroundColor: "#64b5f6",
             "&:hover": { backgroundColor: "#42a5f5" },
+            pointerEvents: 'auto',
           }}
           onClick={getCurrentLocation}
         >
@@ -2357,11 +2359,13 @@ function App() {
           aria-label="measure distance"
           sx={{
             position: "absolute",
-            bottom: 88,
-            left: 20,
+            bottom: { xs: 'calc(env(safe-area-inset-bottom) + 88px)', sm: 88 },
+            right: { xs: 20, sm: 'auto' },
+            left: { xs: 'auto', sm: 20 },
             zIndex: 2000,
             backgroundColor: measureEnabled ? "#81c784" : "#2b2b2b",
             "&:hover": { backgroundColor: measureEnabled ? "#66bb6a" : "#3a3a3a" },
+            pointerEvents: 'auto',
           }}
           onClick={() => setMeasureEnabled((v) => !v)}
         >
@@ -2375,11 +2379,13 @@ function App() {
             aria-label="clear measurement"
             sx={{
               position: "absolute",
-              bottom: 156,
-              left: 20,
+              bottom: { xs: 'calc(env(safe-area-inset-bottom) + 156px)', sm: 156 },
+              right: { xs: 20, sm: 'auto' },
+              left: { xs: 'auto', sm: 20 },
               zIndex: 2000,
               backgroundColor: "#2b2b2b",
               "&:hover": { backgroundColor: "#3a3a3a" },
+              pointerEvents: 'auto',
             }}
             onClick={clearMeasurement}
           >
@@ -2394,7 +2400,8 @@ function App() {
             sx={{
               position: "absolute",
               bottom: 220,
-              left: 20,
+              left: { xs: 'auto', sm: 20 },
+              right: { xs: 20, sm: 'auto' },
               zIndex: 2000,
               borderRadius: 2,
               border: "1px solid rgba(255, 255, 255, 0.1)",
@@ -2418,11 +2425,13 @@ function App() {
             aria-label="recenter"
             sx={{
               position: "absolute",
-              bottom: 292,
-              left: 20,
+              bottom: { xs: 'calc(env(safe-area-inset-bottom) + 292px)', sm: 292 },
+              right: { xs: 20, sm: 'auto' },
+              left: { xs: 'auto', sm: 20 },
               zIndex: 2000,
               backgroundColor: "#2b2b2b",
               "&:hover": { backgroundColor: "#3a3a3a" },
+              pointerEvents: 'auto',
             }}
             onClick={() => setMapCenter([selectedLocation.lat, selectedLocation.lng])}
           >
@@ -2436,11 +2445,13 @@ function App() {
           aria-label="copy link"
           sx={{
             position: "absolute",
-            bottom: 360,
-            left: 20,
+            bottom: { xs: 'calc(env(safe-area-inset-bottom) + 360px)', sm: 360 },
+            right: { xs: 20, sm: 'auto' },
+            left: { xs: 'auto', sm: 20 },
             zIndex: 2000,
             backgroundColor: "#2b2b2b",
             "&:hover": { backgroundColor: "#3a3a3a" },
+            pointerEvents: 'auto',
           }}
           onClick={() => {
             navigator.clipboard.writeText(window.location.href);
@@ -2463,11 +2474,13 @@ function App() {
           aria-label="favorites"
           sx={{
             position: "absolute",
-            bottom: 428,
-            left: 20,
+            bottom: { xs: 'calc(env(safe-area-inset-bottom) + 428px)', sm: 428 },
+            right: { xs: 20, sm: 'auto' },
+            left: { xs: 'auto', sm: 20 },
             zIndex: 2000,
             backgroundColor: favoritesOpen ? "#81c784" : "#2b2b2b",
             "&:hover": { backgroundColor: favoritesOpen ? "#66bb6a" : "#3a3a3a" },
+            pointerEvents: 'auto',
           }}
           onClick={() => setFavoritesOpen((v) => !v)}
         >

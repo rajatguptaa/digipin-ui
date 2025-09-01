@@ -50,6 +50,7 @@ import {
   Storage as StorageIcon,
 } from "@mui/icons-material";
 import { MapContainer, Marker, useMapEvents, useMap, Rectangle, GeoJSON, Polyline, Circle } from "react-leaflet";
+import MapView from "./components/MapView";
 import L from "leaflet";
 import {
   getDigiPin,
@@ -60,6 +61,8 @@ import {
   findNearest,
 } from "digipinjs";
 import "./App.css";
+import SearchOverlay from "./components/SearchOverlay";
+import InfoDialog from "./components/InfoDialog";
 import { MapTabPanel } from "./components/MapRouter";
 import BaseLayers, { BaseKey } from "./components/BaseLayers";
 import MobileBottomSheet from "./components/MobileBottomSheet";
@@ -898,28 +901,14 @@ function App() {
               {geoDistance ? (
                 <MapTabPanel geoPinA={geoPinA} geoPinB={geoPinB} />
               ) : (
-                <MapContainer
+                <MapView
                   center={mapCenter}
                   zoom={mapZoom}
-                  style={{ height: "100%", width: "100%", minHeight: 400 }}
-                  minZoom={4}
-                  maxBounds={indiaBounds}
-                  maxBoundsViscosity={1.0}
-                  bounds={indiaBounds}
+                  indiaBounds={indiaBounds}
+                  baseLayer={baseLayer}
+                  onBaseChange={setBaseLayer}
+                  onZoomChange={setMapZoom}
                 >
-                  <BaseLayers initialBase={baseLayer} onBaseChange={(k) => setBaseLayer(k)} />
-                  <ZoomEvents onZoomChange={(z) => setMapZoom(z)} />
-                  <Rectangle
-                    bounds={indiaBounds}
-                    pathOptions={{
-                      color: "#64b5f6",
-                      weight: 2,
-                      fillColor: "#64b5f6",
-                      fillOpacity: 0.1,
-                      dashArray: "5, 5",
-                    }}
-                  />
-                  <IndiaBoundaryLayer />
                   <LocationSelector
                     setLat={setEncodeLat}
                     setLng={setEncodeLng}
@@ -968,8 +957,7 @@ function App() {
                       })}
                     />
                   )}
-                  <MapController center={mapCenter} />
-                </MapContainer>
+                </MapView>
               )}
 
               {/* Quick Actions SpeedDial when panel is collapsed */}

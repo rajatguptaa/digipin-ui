@@ -75,8 +75,6 @@ export function MapTabPanel({ geoPinA, geoPinB }: Props) {
 
 function FitToPins({ a, b }: { a: [number, number]; b: [number, number] | null }) {
   const map = useMap();
-  const keyA = `${a[0]},${a[1]}`;
-  const keyB = b ? `${b[0]},${b[1]}` : "null";
   useEffect(() => {
     setTimeout(() => map.invalidateSize(), 0);
     if (b) {
@@ -85,6 +83,6 @@ function FitToPins({ a, b }: { a: [number, number]; b: [number, number] | null }
     } else {
       map.setView(a, 14);
     }
-  }, [keyA, keyB, map]);
+  }, [a, b, map]);
   return null;
 }

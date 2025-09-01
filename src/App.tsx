@@ -23,7 +23,6 @@ import {
   createTheme,
   CssBaseline,
   useMediaQuery,
-  Collapse,
   List,
   ListItem,
   ListItemText,
@@ -33,7 +32,6 @@ import {
   SpeedDialAction,
   SpeedDialIcon,
   Drawer,
-  Divider,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import {
@@ -832,9 +830,7 @@ function App() {
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const [mobilePanelOpen] = useState(true);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(true);
-  const drawerPeek = 68;
 
   return (
     <ThemeProvider theme={darkTheme}>

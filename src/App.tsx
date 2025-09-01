@@ -31,7 +31,6 @@ import {
   SpeedDial,
   SpeedDialAction,
   SpeedDialIcon,
-  Drawer,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import {
@@ -871,28 +870,24 @@ function App() {
         {isMobile ? (
           // MOBILE: Map full-screen with bottom sheet controls
           <Box sx={{ width: "100vw", height: "calc(100vh - 56px)", position: "relative" }}>
-            <Drawer
-              anchor="bottom"
-              open={mobileDrawerOpen}
-              onClose={() => setMobileDrawerOpen(false)}
-              ModalProps={{
-                keepMounted: true,
-                hideBackdrop: true,
-                disableEnforceFocus: true,
-                BackdropProps: { style: { backgroundColor: 'transparent' } },
-              }}
-              PaperProps={{
-                sx: {
-                  height: '60vh',
-                  overflow: 'auto',
-                  backgroundColor: 'background.paper',
+            {/* Custom bottom sheet (no Modal) to avoid pointer blocking */}
+            <Box sx={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 1500, pointerEvents: 'none' }}>
+              <Box
+                sx={{
+                  pointerEvents: 'auto',
+                  mx: 'auto',
+                  width: '100%',
+                  maxWidth: '100vw',
                   borderTopLeftRadius: 16,
                   borderTopRightRadius: 16,
-                  borderTop: '1px solid rgba(255,255,255,0.1)'
-                }
-              }}
-            >
-              <Box sx={{ pt: 1 }}>
+                  borderTop: '1px solid rgba(255,255,255,0.1)',
+                  backgroundColor: 'background.paper',
+                  boxShadow: 3,
+                  height: mobileDrawerOpen ? '60vh' : 0,
+                  overflow: 'hidden',
+                  transition: 'height 200ms ease',
+                }}
+              >
                 <Box sx={{ width: 40, height: 4, bgcolor: 'grey.600', borderRadius: 2, mx: 'auto', my: 1 }} onClick={() => setMobileDrawerOpen(v=>!v)} />
                 <Tabs
                   value={activeTab}
@@ -1441,7 +1436,8 @@ function App() {
                   </Box>
                 </TabPanel>
               </Box>
-            </Drawer>
+              </Box>
+            </Box>
             <Box
               sx={{
                 width: "100vw",

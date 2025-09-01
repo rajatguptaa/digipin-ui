@@ -1171,35 +1171,9 @@ function App() {
                           <Box sx={{ p: 1, backgroundColor: "rgba(255,255,255,0.9)", borderRadius: 1 }}>
                             <QrImg value={`https://www.google.com/maps?q=${decodeResult.lat},${decodeResult.lng}`} size={96} />
                           </Box>
-                    </Box>
-                    {selectedLocation && (
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 2, flexWrap: "wrap" }}>
-                        <Button
-                          variant="outlined"
-                          href={`https://www.google.com/maps?q=${selectedLocation.lat},${selectedLocation.lng}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          sx={{ borderColor: "#64b5f6", color: "#64b5f6" }}
-                          startIcon={<LocationOn />}
-                        >
-                          Open in Google Maps
-                        </Button>
-                        <Tooltip title="Copy Google Maps link">
-                          <IconButton
-                            size="small"
-                            onClick={() => navigator.clipboard.writeText(`https://www.google.com/maps?q=${selectedLocation.lat},${selectedLocation.lng}`)}
-                            sx={{ color: "#64b5f6" }}
-                          >
-                            <LinkIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Box sx={{ p: 1, backgroundColor: "rgba(255,255,255,0.9)", borderRadius: 1 }}>
-                          <QrImg value={`https://www.google.com/maps?q=${selectedLocation.lat},${selectedLocation.lng}`} size={96} />
                         </Box>
-                      </Box>
+                      </Alert>
                     )}
-                  </Alert>
-                )}
 
                     {decodeError && (
                       <Alert severity="error" sx={{ mt: 2 }}>
@@ -1436,8 +1410,6 @@ function App() {
                   </Box>
                 </TabPanel>
               </Box>
-              </Box>
-            </Box>
             <Box
               sx={{
                 width: "100vw",
@@ -1640,8 +1612,6 @@ function App() {
                 <MapController center={mapCenter} />
               </MapContainer>
                     )}
-            
-              
               {/* Quick Actions SpeedDial when panel is collapsed */}
               {panelCollapsed && (
                 <SpeedDial
@@ -1700,6 +1670,198 @@ function App() {
                   </IconButton>
                 </Tooltip>
               </Box>
+              <Box
+                sx={{ width: "100%", height: "100%", overflowY: "auto", p: 0 }}
+              >
+                <Tabs
+                  value={activeTab}
+                  onChange={handleTabChange}
+                  variant="fullWidth"
+                  sx={{ backgroundColor: "rgba(100, 181, 246, 0.1)" }}
+                >
+                  <Tab
+                    icon={<LocationOn />}
+                    label="Encode"
+                    iconPosition="start"
+                    sx={{ color: "#64b5f6" }}
+                  />
+                  <Tab
+                    icon={<Search />}
+                    label="Decode"
+                    iconPosition="start"
+                    sx={{ color: "#64b5f6" }}
+                  />
+                  <Tab label="Batch" sx={{ color: "#64b5f6" }} />
+                  <Tab label="Geo Utilities" sx={{ color: "#64b5f6" }} />
+                </Tabs>
+                {/* Encode Tab */}
+                <TabPanel value={activeTab} index={0}>
+                  <Box
+                    sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+                  >
+                    <Typography
+                      variant="h6"
+                      gutterBottom
+                      sx={{ color: "#ffffff" }}
+                    >
+                      Convert Coordinates to DIGIPIN
+                    </Typography>
+
+                    {/* Invalid Coordinates Warning */}
+                    {invalidCoordinates && (
+                      <Alert
+                        severity="warning"
+                        sx={{
+                          backgroundColor: "rgba(255, 152, 0, 0.1)",
+                          border: "1px solid rgba(255, 152, 0, 0.3)",
+                        }}
+                      >
+                        <Typography variant="subtitle2" gutterBottom>
+                          ⚠️ Invalid Location Selected
+                        </Typography>
+                        <Typography variant="body2">
+                          Please click within the blue boundary (India) on the
+                          map to select valid coordinates.
+                        </Typography>
+                      </Alert>
+                    )}
+
+                    {/* Location Name Display */}
+                    {locationName && (
+                      <Alert
+                        severity="info"
+                        icon={<LocationOn />}
+                        sx={{ backgroundColor: "rgba(100, 181, 246, 0.1)" }}
+                      >
+                        <Typography variant="subtitle2" gutterBottom>
+                          Selected Location:
+                        </Typography>
+                        <Typography variant="body2">{locationName}</Typography>
+                      </Alert>
+                    )}
+
+                    {loadingLocation && (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                          p: 1,
+                        }}
+                      >
+                        <CircularProgress size={16} sx={{ color: "#64b5f6" }} />
+                        <Typography variant="body2" color="text.secondary">
+                          Getting location name...
+                        </Typography>
+                      </Box>
+                    )}
+
+                    <TextField
+                      label="Latitude"
+                      placeholder="e.g., 28.6139"
+                      value={encodeLat}
+                      onChange={(e) => setEncodeLat(e.target.value)}
+                      fullWidth
+                      variant="outlined"
+                      size="small"
+                    />
+
+                    <TextField
+                      label="Longitude"
+                      placeholder="e.g., 77.2090"
+                      value={encodeLng}
+                      onChange={(e) => setEncodeLng(e.target.value)}
+                      fullWidth
+                      variant="outlined"
+                      size="small"
+                    />
+
+                    <Button
+                      variant="contained"
+                      onClick={encodeCoordinates}
+                      fullWidth
+                      sx={{
+                        mt: 1,
+                        backgroundColor: "#64b5f6",
+                        "&:hover": { backgroundColor: "#42a5f5" },
+                      }}
+                    >
+                      Generate DIGIPIN
+                    </Button>
+
+                    {encodeResult && (
+                      <Alert
+                        severity="success"
+                        sx={{
+                          mt: 2,
+                          backgroundColor: "rgba(129, 199, 132, 0.1)",
+                        }}
+                      >
+                        <Typography variant="subtitle2" gutterBottom>
+                          DIGIPIN Generated:
+                        </Typography>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                            mt: 1,
+                          }}
+                        >
+                          <Chip
+                            label={encodeResult}
+                            color="primary"
+                            variant="filled"
+                            sx={{
+                              fontSize: "1.1rem",
+                              fontWeight: "bold",
+                              backgroundColor: "#64b5f6",
+                            }}
+                          />
+                          <IconButton
+                            size="small"
+                            onClick={() => copyToClipboard(encodeResult)}
+                            sx={{ color: "#64b5f6" }}
+                          >
+                            {copied ? <CheckCircle /> : <ContentCopy />}
+                          </IconButton>
+                        </Box>
+                        {selectedLocation && (
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 2, flexWrap: "wrap" }}>
+                            <Button
+                              variant="outlined"
+                              href={`https://www.google.com/maps?q=${selectedLocation.lat},${selectedLocation.lng}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              sx={{ borderColor: "#64b5f6", color: "#64b5f6" }}
+                              startIcon={<LocationOn />}
+                            >
+                              Open in Google Maps
+                            </Button>
+                            <Tooltip title="Copy Google Maps link">
+                              <IconButton
+                                size="small"
+                                onClick={() => navigator.clipboard.writeText(`https://www.google.com/maps?q=${selectedLocation.lat},${selectedLocation.lng}`)}
+                                sx={{ color: "#64b5f6" }}
+                              >
+                                <LinkIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Box sx={{ p: 1, backgroundColor: "rgba(255,255,255,0.9)", borderRadius: 1 }}>
+                              <QrImg value={`https://www.google.com/maps?q=${selectedLocation.lat},${selectedLocation.lng}`} size={96} />
+                            </Box>
+                          </Box>
+                        )}
+                      </Alert>
+                    )}
+
+                    {encodeError && (
+                      <Alert severity="error" sx={{ mt: 2 }}>
+                        {encodeError}
+                      </Alert>
+                    )}
+                  </Box>
+                </TabPanel>
               <Box
                 sx={{ width: "100%", height: "100%", overflowY: "auto", p: 0 }}
               >
@@ -1962,30 +2124,6 @@ function App() {
                             icon={<LocationOn />}
                             sx={{ borderColor: "#64b5f6", color: "#64b5f6" }}
                           />
-                        </Box>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 2, flexWrap: "wrap" }}>
-                          <Button
-                            variant="outlined"
-                            href={`https://www.google.com/maps?q=${decodeResult.lat},${decodeResult.lng}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            sx={{ borderColor: "#64b5f6", color: "#64b5f6" }}
-                            startIcon={<LocationOn />}
-                          >
-                            Open in Google Maps
-                          </Button>
-                          <Tooltip title="Copy Google Maps link">
-                            <IconButton
-                              size="small"
-                              onClick={() => navigator.clipboard.writeText(`https://www.google.com/maps?q=${decodeResult.lat},${decodeResult.lng}`)}
-                              sx={{ color: "#64b5f6" }}
-                            >
-                              <LinkIcon />
-                            </IconButton>
-                          </Tooltip>
-                          <Box sx={{ p: 1, backgroundColor: "rgba(255,255,255,0.9)", borderRadius: 1 }}>
-                            <QrImg value={`https://www.google.com/maps?q=${decodeResult.lat},${decodeResult.lng}`} size={96} />
-                          </Box>
                         </Box>
                         <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 2, flexWrap: "wrap" }}>
                           <Button

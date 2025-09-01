@@ -1,9 +1,12 @@
+import React, { useEffect } from "react";
 import { Box } from "@mui/material";
-import { MapContainer, TileLayer, Marker, Polyline, Popup } from "react-leaflet";
+import { MapContainer, Marker, Polyline, Popup, useMap } from "react-leaflet";
+import L from "leaflet";
 import {
   getLatLngFromDigiPin,
 } from "digipinjs";
 import "leaflet/dist/leaflet.css";
+import BaseLayers from "./BaseLayers";
 
 type LatLngTuple = [number, number];
 
@@ -40,17 +43,15 @@ export function MapTabPanel({ geoPinA, geoPinB }: Props) {
   if (!isValidLatLng(latLngA)) return <Box>Invalid DIGIPIN A location</Box>;
 
   return (
-    <Box sx={{ height: 400, width: "100%", mt: 2 }}>
+    <Box sx={{ height: "100%", width: "100%" }}>
       <MapContainer
         center={latLngA}
-        zoom={5}
-        scrollWheelZoom={false}
+        zoom={12}
+        scrollWheelZoom
         style={{ height: "100%", width: "100%" }}
       >
-        <TileLayer
-          attribution='&copy; OpenStreetMap contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        <FitToPins a={latLngA} b={isValidLatLng(latLngB) ? latLngB : null} />
+        <BaseLayers />
 
         <Marker position={latLngA}>
           <Popup>DIGIPIN A: {JSON.stringify(geoPinA)}</Popup>
@@ -70,4 +71,20 @@ export function MapTabPanel({ geoPinA, geoPinB }: Props) {
       </MapContainer>
     </Box>
   );
+}
+
+function FitToPins({ a, b }: { a: [number, number]; b: [number, number] | null }) {
+  const map = useMap();
+  const keyA = `${a[0]},${a[1]}`;
+  const keyB = b ? `${b[0]},${b[1]}` : "null";
+  useEffect(() => {
+    setTimeout(() => map.invalidateSize(), 0);
+    if (b) {
+      const bounds = L.latLngBounds([a[0], a[1]], [b[0], b[1]]);
+      map.fitBounds(bounds, { padding: [40, 40] });
+    } else {
+      map.setView(a, 14);
+    }
+  }, [keyA, keyB, map]);
+  return null;
 }

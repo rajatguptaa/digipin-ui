@@ -1,15 +1,16 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
-import App from './App';
+import * as AppModule from './App';
 import reportWebVitals from './reportWebVitals';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
+const AppComponent = (AppModule as any).default || (AppModule as any);
 root.render(
   <React.StrictMode>
-    <App />
+    <AppComponent />
   </React.StrictMode>
 );
 

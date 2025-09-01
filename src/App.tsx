@@ -62,6 +62,7 @@ import {
 import "./App.css";
 import { MapTabPanel } from "./components/MapRouter";
 import BaseLayers, { BaseKey } from "./components/BaseLayers";
+import MobileBottomSheet from "./components/MobileBottomSheet";
 // GoogleMapView removed; using Leaflet only
 
 // Fix default marker icon issue in leaflet
@@ -829,7 +830,7 @@ function App() {
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(true);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   return (
     <ThemeProvider theme={darkTheme}>
@@ -910,59 +911,6 @@ function App() {
                 <MapController center={mapCenter} />
               </MapContainer>
             )}
-          </Box>
-        ) : (
-                      <MapContainer
-                center={mapCenter}
-                zoom={mapZoom}
-                style={{ height: "100%", width: "100%", minHeight: 400 }}
-                minZoom={4}
-                maxBounds={indiaBounds}
-                maxBoundsViscosity={1.0}
-                bounds={indiaBounds}
-              >
-                <BaseLayers initialBase={baseLayer} onBaseChange={(k) => setBaseLayer(k)} />
-                <ZoomEvents onZoomChange={(z) => setMapZoom(z)} />
-
-                {/* India boundary overlay */}
-                <Rectangle
-                  bounds={indiaBounds}
-                  pathOptions={{
-                    color: "#64b5f6",
-                    weight: 2,
-                    fillColor: "#64b5f6",
-                    fillOpacity: 0.1,
-                    dashArray: "5, 5",
-                  }}
-                />
-                {/* Precise India polygon (simplified). Loaded from public/india.geojson */}
-                <IndiaBoundaryLayer />
-
-                <LocationSelector
-                  setLat={setEncodeLat}
-                  setLng={setEncodeLng}
-                  setLocationName={setLocationName}
-                  setLocationLoading={setLoadingLocation}
-                  setInvalidCoordinates={setInvalidCoordinates}
-                  setInvalidClickLocation={setInvalidClickLocation}
-                />
-                {selectedLocation && (
-                  <Marker
-                    position={[selectedLocation.lat, selectedLocation.lng]}
-                    draggable
-                    eventHandlers={{ dragend: onMarkerDragEnd }}
-                  />
-                )}
-                {accuracyCenter && accuracyRadius && (
-                  <Circle
-                    center={accuracyCenter}
-                    radius={accuracyRadius}
-                    pathOptions={{ color: "#64b5f6", weight: 1, fillColor: "#64b5f6", fillOpacity: 0.1 }}
-                  />
-                )}
-                {/* Measurement tool visuals */}
-                {measurePoints.length > 0 && (
-                  <Marker position={measurePoints[0]} />
                 )}
                 {measurePoints.length === 2 && (
                   <>

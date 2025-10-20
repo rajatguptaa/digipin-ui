@@ -137,6 +137,20 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Create React App](https://create-react-app.dev/) for the development framework
 - [Netlify](https://netlify.com/) for hosting and deployment
 
+## 🔁 CI/CD
+
+GitHub Actions automatically validate and trigger Render deploys:
+
+- `.github/workflows/backend-deploy.yml` installs the FastAPI backend, runs a syntax check, and calls your Render backend deploy hook.
+- `.github/workflows/frontend-deploy.yml` builds the React UI and triggers your Render static-site deploy hook.
+
+Add these repository secrets so the workflows can deploy:
+
+- `RENDER_BACKEND_DEPLOY_HOOK` – the deploy hook URL for the Render FastAPI service.
+- `RENDER_FRONTEND_DEPLOY_HOOK` – the deploy hook URL for the Render static-site service.
+
+Workflows run on pushes to `main` that touch relevant files, and can also be run manually from the GitHub Actions tab.
+
 ## 📞 Support
 
 If you have any questions or need help, please:

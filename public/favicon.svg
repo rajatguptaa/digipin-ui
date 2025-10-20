@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#64b5f6"/>
+      <stop offset="1" stop-color="#2286c3"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="12" fill="#0a0a0a"/>
+  <path d="M32 8c8.837 0 16 7.163 16 16 0 11.5-16 32-16 32S16 35.5 16 24c0-8.837 7.163-16 16-16z" fill="url(#g)"/>
+  <circle cx="32" cy="24" r="6" fill="#fff"/>
+  <text x="32" y="52" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="10" fill="#64b5f6">DP</text>
+</svg>
+

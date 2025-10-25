@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapContainer, Rectangle, useMapEvents, GeoJSON } from 'react-leaflet';
+import { MapContainer, Rectangle, useMapEvents } from 'react-leaflet';
 import BaseLayers, { BaseKey } from './BaseLayers';
 
 type Bounds = [[number, number], [number, number]];
@@ -13,18 +13,6 @@ function ZoomEvents({ onZoomChange }: { onZoomChange: (z: number) => void }) {
     },
   });
   return null;
-}
-
-function IndiaBoundaryLayer() {
-  const [data, setData] = React.useState<any | null>(null);
-  React.useEffect(() => {
-    fetch(`${process.env.PUBLIC_URL || ''}/india.geojson`)
-      .then((r) => r.json())
-      .then(setData)
-      .catch(() => {});
-  }, []);
-  if (!data) return null;
-  return <GeoJSON data={data} style={{ color: '#64b5f6', weight: 1, fillOpacity: 0.05 }} />;
 }
 
 export default function MapView({
@@ -60,9 +48,7 @@ export default function MapView({
         bounds={indiaBounds}
         pathOptions={{ color: '#64b5f6', weight: 2, fillColor: '#64b5f6', fillOpacity: 0.1, dashArray: '5, 5' }}
       />
-      <IndiaBoundaryLayer />
       {children}
     </MapContainer>
   );
 }
-

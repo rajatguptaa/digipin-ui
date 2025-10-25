@@ -49,7 +49,7 @@ import {
   GpsFixed,
   Storage as StorageIcon,
 } from "@mui/icons-material";
-import { MapContainer, Marker, useMapEvents, useMap, Rectangle, GeoJSON, Polyline, Circle } from "react-leaflet";
+import { MapContainer, Marker, useMapEvents, useMap, Rectangle, Polyline, Circle } from "react-leaflet";
 import MapView from "./components/MapView";
 import DigipinAssistant from "./components/DigipinAssistant";
 import L from "leaflet";
@@ -227,18 +227,6 @@ function MeasureToolOnMap({
     },
   });
   return null;
-}
-
-function IndiaBoundaryLayer() {
-  const [data, setData] = React.useState<any | null>(null);
-  React.useEffect(() => {
-    fetch(`${process.env.PUBLIC_URL || ""}/india.geojson`)
-      .then((r) => r.json())
-      .then(setData)
-      .catch(() => {});
-  }, []);
-  if (!data) return null;
-  return <GeoJSON data={data} style={{ color: "#64b5f6", weight: 1, fillOpacity: 0.05 }} />;
 }
 
 function QrImg({ value, size = 96 }: { value: string; size?: number }) {
@@ -864,6 +852,13 @@ function App() {
     try {
       setDecodeError("");
       const coordinates = getLatLngFromDigiPin(decodeDigipin);
+      if (!isWithinIndia(coordinates.latitude, coordinates.longitude)) {
+        setDecodeError(
+          `DIGIPIN resolves outside India. Valid latitude range is ${indiaBounds[0][0]}°–${indiaBounds[1][0]}° and longitude ${indiaBounds[0][1]}°–${indiaBounds[1][1]}°.`
+        );
+        setDecodeResult(null);
+        return;
+      }
       setDecodeResult({
         lat: coordinates.latitude,
         lng: coordinates.longitude,
@@ -1050,6 +1045,14 @@ function App() {
         setBatchResult([]);
         return;
       }
+      const invalidCoord = coords.find((c) => !isWithinIndia(c.lat, c.lng));
+      if (invalidCoord) {
+        setBatchError(
+          `Coordinates ${invalidCoord.lat}, ${invalidCoord.lng} fall outside India (lat ${indiaBounds[0][0]}°–${indiaBounds[1][0]}°, lng ${indiaBounds[0][1]}°–${indiaBounds[1][1]}°).`
+        );
+        setBatchResult([]);
+        return;
+      }
       const pins = batchEncode(coords);
       setBatchResult(
         pins.map((pin, i) => ({
@@ -1072,10 +1075,21 @@ function App() {
       const pins = lines;
       const coords = batchDecode(pins);
       setBatchResult(
-        coords.map((coord, i) => ({
-          input: pins[i],
-          result: coord ? `${coord.latitude},${coord.longitude}` : "Invalid DIGIPIN",
-        }))
+        coords.map((coord, i) => {
+          if (!coord) {
+            return { input: pins[i], result: "Invalid DIGIPIN" };
+          }
+          if (!isWithinIndia(coord.latitude, coord.longitude)) {
+            return {
+              input: pins[i],
+              result: "Outside India bounds",
+            };
+          }
+          return {
+            input: pins[i],
+            result: `${coord.latitude},${coord.longitude}`,
+          };
+        })
       );
     } catch {
       setBatchError("Error in batch decoding.");
@@ -1173,7 +1187,6 @@ function App() {
                   bounds={indiaBounds}
                   pathOptions={{ color: "#64b5f6", weight: 2, fillColor: "#64b5f6", fillOpacity: 0.1, dashArray: "5, 5" }}
                 />
-                <IndiaBoundaryLayer />
                 <LocationSelector
                   setLat={setEncodeLat}
                   setLng={setEncodeLng}

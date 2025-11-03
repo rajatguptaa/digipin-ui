@@ -1150,10 +1150,13 @@ function App() {
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
-      <div className="App" style={{ backgroundColor: "#0a0a0a", minHeight: "100vh" }}>
+      <div
+        className="App"
+        style={{ backgroundColor: "#0a0a0a", minHeight: "100vh", display: "flex", flexDirection: "column" }}
+      >
         <AppBar position="static" elevation={0}>
           <Toolbar>
-            <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: "#64b5f6", fontWeight: "bold" }}>
+            <Typography variant="h6" component="h1" sx={{ flexGrow: 1, color: "#64b5f6", fontWeight: "bold" }}>
               DIGIPIN Explorer
             </Typography>
             <IconButton onClick={() => setInfoOpen(true)} sx={{ color: "#64b5f6" }}>
@@ -1167,8 +1170,9 @@ function App() {
           </Tabs>
         </AppBar>
 
-        {isMobile ? (
-          <Box sx={{ width: "100vw", height: "calc(100vh - 56px)", position: "relative" }}>
+        <Box component="main" sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
+          {isMobile ? (
+            <Box sx={{ width: "100vw", height: "calc(100vh - 56px)", position: "relative" }}>
             {geoPinA && geoPinB ? (
               <MapTabPanel geoPinA={geoPinA} geoPinB={geoPinB} />
             ) : (
@@ -1265,10 +1269,10 @@ function App() {
               decodeContent={decodeContentView}
               assistantContent={assistantContentView}
             />
-          </Box>
-        ) : (
-          // DESKTOP
-          <Box sx={{ display: "flex", flexDirection: "row", height: "calc(100vh - 64px)", width: "100vw" }}>
+            </Box>
+          ) : (
+            // DESKTOP
+            <Box sx={{ display: "flex", flexDirection: "row", height: "calc(100vh - 64px)", width: "100vw" }}>
             {/* Map area */}
             <Box sx={{ flex: 1, minWidth: 0, height: "100%", minHeight: 400, position: "relative" }}>
               {geoDistance ? (
@@ -1443,7 +1447,8 @@ function App() {
               </Box>
             )}
           </Box>
-        )}
+          )}
+        </Box>
 
         {/* Search Bar */}
         <Paper

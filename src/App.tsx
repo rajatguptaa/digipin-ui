@@ -65,6 +65,7 @@ import "./App.css";
 import { MapTabPanel } from "./components/MapRouter";
 import BaseLayers, { BaseKey } from "./components/BaseLayers";
 import MobileBottomSheet from "./components/MobileBottomSheet";
+import { AppLogo } from "./components/AppLogo";
 
 // Fix default marker icon issue in leaflet
 // @ts-ignore
@@ -1156,9 +1157,7 @@ function App() {
       >
         <AppBar position="static" elevation={0}>
           <Toolbar>
-            <Typography variant="h6" component="h1" sx={{ flexGrow: 1, color: "#64b5f6", fontWeight: "bold" }}>
-              DIGIPIN Explorer
-            </Typography>
+            <AppLogo sx={{ flexGrow: 1 }} />
             <IconButton onClick={() => setInfoOpen(true)} sx={{ color: "#64b5f6" }}>
               <Info />
             </IconButton>
@@ -1173,102 +1172,101 @@ function App() {
         <Box component="main" sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
           {isMobile ? (
             <Box sx={{ width: "100vw", height: "calc(100vh - 56px)", position: "relative" }}>
-            {geoPinA && geoPinB ? (
-              <MapTabPanel geoPinA={geoPinA} geoPinB={geoPinB} />
-            ) : (
-              <MapContainer
-                center={mapCenter}
-                zoom={mapZoom}
-                style={{ height: "100%", width: "100%", minHeight: 400 }}
-                minZoom={4}
-                maxBounds={indiaBounds}
-                maxBoundsViscosity={1.0}
-                bounds={indiaBounds}
-              >
-                <BaseLayers initialBase={baseLayer} onBaseChange={(k) => setBaseLayer(k)} />
-                <ZoomEvents onZoomChange={(z) => setMapZoom(z)} />
-                <Rectangle
+              {geoPinA && geoPinB ? (
+                <MapTabPanel geoPinA={geoPinA} geoPinB={geoPinB} />
+              ) : (
+                <MapContainer
+                  center={mapCenter}
+                  zoom={mapZoom}
+                  style={{ height: "100%", width: "100%", minHeight: 400 }}
+                  minZoom={4}
+                  maxBounds={indiaBounds}
+                  maxBoundsViscosity={1.0}
                   bounds={indiaBounds}
-                  pathOptions={{ color: "#64b5f6", weight: 2, fillColor: "#64b5f6", fillOpacity: 0.1, dashArray: "5, 5" }}
-                />
-                <LocationSelector
-                  setLat={setEncodeLat}
-                  setLng={setEncodeLng}
-                  setLocationName={setLocationName}
-                  setLocationLoading={setLoadingLocation}
-                  setInvalidCoordinates={setInvalidCoordinates}
-                  setInvalidClickLocation={setInvalidClickLocation}
-                />
-                {selectedLocation && (
-                  <Marker position={[selectedLocation.lat, selectedLocation.lng]} draggable eventHandlers={{ dragend: onMarkerDragEnd }} />
-                )}
-                {accuracyCenter && accuracyRadius && (
-                  <Circle
-                    center={accuracyCenter as any}
-                    radius={accuracyRadius as number}
-                    pathOptions={{ color: "#64b5f6", weight: 1, fillColor: "#64b5f6", fillOpacity: 0.1 }}
+                >
+                  <BaseLayers initialBase={baseLayer} onBaseChange={(k) => setBaseLayer(k)} />
+                  <ZoomEvents onZoomChange={(z) => setMapZoom(z)} />
+                  <Rectangle
+                    bounds={indiaBounds}
+                    pathOptions={{ color: "#64b5f6", weight: 2, fillColor: "#64b5f6", fillOpacity: 0.1, dashArray: "5, 5" }}
                   />
-                )}
-                {measurePoints.length > 0 && <Marker position={measurePoints[0] as any} />}
-                {measurePoints.length === 2 && (
-                  <>
-                    <Marker position={measurePoints[1] as any} />
-                    <Polyline positions={measurePoints as any} pathOptions={{ color: "#ffeb3b", weight: 3 }} />
-                  </>
-                )}
-                <MeasureToolOnMap
-                  enabled={measureEnabled}
-                  points={measurePoints}
-                  onChange={(pts, dist) => {
-                    setMeasurePoints(pts);
-                    setMeasureDistance(dist);
-                  }}
-                />
-                {invalidClickLocation && (
-                  <Marker
-                    position={invalidClickLocation as any}
-                    icon={L.divIcon({
-                      className: "invalid-marker",
-                      html: '<div style="background-color: #f44336; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>',
-                      iconSize: [20, 20],
-                      iconAnchor: [10, 10],
-                    })}
+                  <LocationSelector
+                    setLat={setEncodeLat}
+                    setLng={setEncodeLng}
+                    setLocationName={setLocationName}
+                    setLocationLoading={setLoadingLocation}
+                    setInvalidCoordinates={setInvalidCoordinates}
+                    setInvalidClickLocation={setInvalidClickLocation}
                   />
-                )}
-                <MapController center={mapCenter} />
-              </MapContainer>
-            )}
+                  {selectedLocation && (
+                    <Marker position={[selectedLocation.lat, selectedLocation.lng]} draggable eventHandlers={{ dragend: onMarkerDragEnd }} />
+                  )}
+                  {accuracyCenter && accuracyRadius && (
+                    <Circle
+                      center={accuracyCenter as any}
+                      radius={accuracyRadius as number}
+                      pathOptions={{ color: "#64b5f6", weight: 1, fillColor: "#64b5f6", fillOpacity: 0.1 }}
+                    />
+                  )}
+                  {measurePoints.length > 0 && <Marker position={measurePoints[0] as any} />}
+                  {measurePoints.length === 2 && (
+                    <>
+                      <Marker position={measurePoints[1] as any} />
+                      <Polyline positions={measurePoints as any} pathOptions={{ color: "#ffeb3b", weight: 3 }} />
+                    </>
+                  )}
+                  <MeasureToolOnMap
+                    enabled={measureEnabled}
+                    points={measurePoints}
+                    onChange={(pts, dist) => {
+                      setMeasurePoints(pts);
+                      setMeasureDistance(dist);
+                    }}
+                  />
+                  {invalidClickLocation && (
+                    <Marker
+                      position={invalidClickLocation as any}
+                      icon={L.divIcon({
+                        className: "invalid-marker",
+                        html: '<div style="background-color: #f44336; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>',
+                        iconSize: [20, 20],
+                        iconAnchor: [10, 10],
+                      })}
+                    />
+                  )}
+                  <MapController center={mapCenter} />
+                </MapContainer>
+              )}
+              <Fab
+                color="default"
+                aria-label="open tools"
+                sx={{
+                  position: "absolute",
+                  bottom: { xs: "calc(env(safe-area-inset-bottom) + 20px)", sm: 20 },
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  zIndex: 2000,
+                  backgroundColor: "#2b2b2b",
+                  "&:hover": { backgroundColor: "#3a3a3a" },
+                }}
+                onClick={() => setMobileDrawerOpen(true)}
+              >
+                <SpeedDialIcon />
+              </Fab>
 
-            <Fab
-              color="default"
-              aria-label="open tools"
-              sx={{
-                position: "absolute",
-                bottom: { xs: "calc(env(safe-area-inset-bottom) + 20px)", sm: 20 },
-                left: "50%",
-                transform: "translateX(-50%)",
-                zIndex: 2000,
-                backgroundColor: "#2b2b2b",
-                "&:hover": { backgroundColor: "#3a3a3a" },
-              }}
-              onClick={() => setMobileDrawerOpen(true)}
-            >
-              <SpeedDialIcon />
-            </Fab>
-
-            <MobileBottomSheet
-              open={mobileDrawerOpen}
-              onClose={() => setMobileDrawerOpen(false)}
-              primaryTab={primaryTab}
-              onPrimaryTabChange={setPrimaryTab}
-              encodeSubTab={encodeSubTab}
-              onEncodeSubTabChange={setEncodeSubTab}
-              encodeSingleContent={encodeSingleContent}
-              encodeBatchContent={encodeBatchContent}
-              encodeGeoContent={encodeGeoContent}
-              decodeContent={decodeContentView}
-              assistantContent={assistantContentView}
-            />
+              <MobileBottomSheet
+                open={mobileDrawerOpen}
+                onClose={() => setMobileDrawerOpen(false)}
+                primaryTab={primaryTab}
+                onPrimaryTabChange={setPrimaryTab}
+                encodeSubTab={encodeSubTab}
+                onEncodeSubTabChange={setEncodeSubTab}
+                encodeSingleContent={encodeSingleContent}
+                encodeBatchContent={encodeBatchContent}
+                encodeGeoContent={encodeGeoContent}
+                decodeContent={decodeContentView}
+                assistantContent={assistantContentView}
+              />
             </Box>
           ) : (
             // DESKTOP

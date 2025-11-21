@@ -240,6 +240,10 @@ function App() {
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setPrimaryTab(newValue);
     if (newValue !== 0) setGeoDistance(null);
+    // Open mobile drawer when switching tabs on mobile
+    if (isMobile) {
+      setMobileDrawerOpen(true);
+    }
   };
 
   const handleEncodeTabChange = (_: React.SyntheticEvent, newValue: number) => {
@@ -589,6 +593,13 @@ function App() {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
+  // Open mobile drawer by default on mobile devices
+  useEffect(() => {
+    if (isMobile) {
+      setMobileDrawerOpen(true);
+    }
+  }, [isMobile]);
+
   // Render content based on tabs
   const encodeSingleContent = (
     <EncodePanel
@@ -805,6 +816,26 @@ function App() {
               </Box>
             </Box>
           </Box>
+        )}
+
+        {/* Mobile Bottom Sheet */}
+        {isMobile && (
+          <MobileBottomSheet
+            open={mobileDrawerOpen}
+            onClose={() => setMobileDrawerOpen(false)}
+            primaryTab={primaryTab}
+            onPrimaryTabChange={(value) => {
+              setPrimaryTab(value);
+              setMobileDrawerOpen(true);
+            }}
+            encodeSubTab={encodeSubTab}
+            onEncodeSubTabChange={setEncodeSubTab}
+            encodeSingleContent={encodeSingleContent}
+            encodeBatchContent={encodeBatchContent}
+            encodeGeoContent={encodeGeoContent}
+            decodeContent={decodeContentView}
+            assistantContent={assistantContentView}
+          />
         )}
       </Box>
 

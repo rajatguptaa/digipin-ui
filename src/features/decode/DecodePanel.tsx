@@ -13,7 +13,7 @@ import {
     Fade,
     Divider,
 } from "@mui/material";
-import { LocationOn, Link as LinkIcon, ContentCopy, CheckCircle } from "@mui/icons-material";
+import { LocationOn, Link as LinkIcon, CheckCircle } from "@mui/icons-material";
 import { Location } from "../../types";
 
 interface DecodePanelProps {

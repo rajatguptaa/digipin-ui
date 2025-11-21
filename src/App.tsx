@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Fab,
@@ -52,7 +52,6 @@ import "./App.css";
 
 import { MapplsMapView } from "./components/MapplsMapView";
 import DigipinAssistant from "./components/DigipinAssistant";
-import { MapTabPanel } from "./components/MapRouter";
 import { BaseKey } from "./components/BaseLayers";
 import MobileBottomSheet from "./components/MobileBottomSheet";
 import { MainLayout } from "./layout/MainLayout";
@@ -101,8 +100,6 @@ function App() {
   const [copied, setCopied] = useState(false);
   const [mapCenter, setMapCenter] = useState<[number, number]>([20.5937, 78.9629]);
   const [invalidCoordinates, setInvalidCoordinates] = useState(false);
-  const [invalidClickLocation, setInvalidClickLocation] = useState<[number, number] | null>(null);
-  const lastValidPositionRef = useRef<[number, number] | null>(null);
 
   // Batch & Geo tab state
   const [batchInput, setBatchInput] = useState("");
@@ -119,15 +116,12 @@ function App() {
   const [baseLayer, setBaseLayer] = useState<BaseKey>("cartoDark");
   const [mapZoom, setMapZoom] = useState(5);
   const [measureEnabled, setMeasureEnabled] = useState(false);
-  const [measurePoints, setMeasurePoints] = useState<[number, number][]>([]);
   const [measureDistance, setMeasureDistance] = useState<number | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [favoritesOpen, setFavoritesOpen] = useState(false);
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [favDialogOpen, setFavDialogOpen] = useState(false);
   const [favLabel, setFavLabel] = useState("");
-  const [accuracyCenter, setAccuracyCenter] = useState<[number, number] | null>(null);
-  const [accuracyRadius, setAccuracyRadius] = useState<number | null>(null);
   const [panelCollapsed, setPanelCollapsed] = useState(false);
 
   useEffect(() => {
@@ -135,12 +129,6 @@ function App() {
       setGeoDistance(null);
     }
   }, [encodeSubTab]);
-
-  useEffect(() => {
-    if (selectedLocation) {
-      lastValidPositionRef.current = [selectedLocation.lat, selectedLocation.lng];
-    }
-  }, [selectedLocation]);
 
   // Sync state into URL
   useEffect(() => {
@@ -320,15 +308,13 @@ function App() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const { latitude, longitude, accuracy } = position.coords as any;
+          const { latitude, longitude } = position.coords as any;
           if (isWithinIndia(latitude, longitude)) {
             setSelectedLocation({ lat: latitude, lng: longitude });
             setEncodeLat(latitude.toFixed(6));
             setEncodeLng(longitude.toFixed(6));
             setMapCenter([latitude, longitude]);
             fetchLocationName(latitude, longitude);
-            setAccuracyCenter([latitude, longitude]);
-            if (typeof accuracy === "number") setAccuracyRadius(accuracy);
           } else {
             alert("⚠️ Your current location is outside India. DIGIPIN only works for Indian coordinates.");
           }
@@ -362,7 +348,6 @@ function App() {
   };
 
   const clearMeasurement = () => {
-    setMeasurePoints([]);
     setMeasureDistance(null);
   };
 
@@ -404,36 +389,6 @@ function App() {
     fetchLocationName(f.lat, f.lng);
   };
 
-  const onMarkerDragEnd = (e: any) => {
-    const marker = e.target;
-    const pos = marker.getLatLng();
-    const lat = pos.lat as number;
-    const lng = pos.lng as number;
-    const prev = lastValidPositionRef.current;
-
-    if (isWithinIndia(lat, lng)) {
-      setInvalidCoordinates(false);
-      setInvalidClickLocation(null);
-      setSelectedLocation({ lat, lng });
-      setEncodeLat(lat.toFixed(6));
-      setEncodeLng(lng.toFixed(6));
-      setMapCenter([lat, lng]);
-      try {
-        const pin = getDigiPin(lat, lng);
-        setEncodeResult(pin);
-      } catch { }
-      fetchLocationName(lat, lng);
-      lastValidPositionRef.current = [lat, lng];
-    } else {
-      setInvalidCoordinates(true);
-      if (prev) {
-        setSelectedLocation({ lat: prev[0], lng: prev[1] });
-        setMapCenter([prev[0], prev[1]]);
-      }
-      alert("⚠️ Please keep the marker within India. DIGIPIN only works for Indian coordinates.");
-    }
-  };
-
   const handleSearchSelect = (result: SearchResult) => {
     const lat = parseFloat(result.lat);
     const lng = parseFloat(result.lon);
@@ -456,7 +411,6 @@ function App() {
 
     if (coordinatesWithinIndia) {
       setInvalidCoordinates(false);
-      setInvalidClickLocation(null);
       setEncodeLat(lat.toFixed(6));
       setEncodeLng(lng.toFixed(6));
       setSelectedLocation({ lat, lng });
@@ -464,11 +418,9 @@ function App() {
       fetchLocationName(lat, lng);
     } else {
       setInvalidCoordinates(true);
-      setInvalidClickLocation([lat, lng]);
       setEncodeLat("");
       setEncodeLng("");
       setLocationName("");
-      setTimeout(() => setInvalidClickLocation(null), 3000);
       alert(
         "⚠️ Please select a location within India. DIGIPIN only works for Indian coordinates.\n\nIndia bounds: Latitude 6.5° to 37.1°, Longitude 68.0° to 97.5°"
       );

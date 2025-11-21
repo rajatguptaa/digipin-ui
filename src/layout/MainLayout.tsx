@@ -10,7 +10,6 @@ import {
     IconButton,
     Tooltip,
     useMediaQuery,
-    useTheme,
 } from "@mui/material";
 import { Info } from "@mui/icons-material";
 import { AppLogo } from "../components/AppLogo";

@@ -5,7 +5,6 @@ import {
     TextField,
     Button,
     Alert,
-    Chip,
     IconButton,
     Tooltip,
     CircularProgress,
@@ -19,8 +18,6 @@ import {
     ContentCopy,
     CheckCircle,
     Link as LinkIcon,
-    Share,
-    QrCode,
 } from "@mui/icons-material";
 import { Location } from "../../types";
 

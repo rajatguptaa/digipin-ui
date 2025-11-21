@@ -1,6 +1,6 @@
 import React from "react";
 import { Paper, BottomNavigation, BottomNavigationAction } from "@mui/material";
-import { LocationOn, Code, Storage, Straighten, Assistant } from "@mui/icons-material";
+import { LocationOn, Code, Storage, Assistant } from "@mui/icons-material";
 
 interface MobileNavProps {
     value: number;

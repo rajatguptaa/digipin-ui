@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Typography, TextField, Button, Alert, Paper, Stack, Fade, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from "@mui/material";
-import { Storage as StorageIcon, Code, DataObject } from "@mui/icons-material";
+import { Code, DataObject } from "@mui/icons-material";
 
 interface BatchPanelProps {
     batchInput: string;

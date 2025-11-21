@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Typography, TextField, Button, Alert, Paper, Stack, Divider, Chip } from "@mui/material";
+import { Box, Typography, TextField, Button, Alert, Paper, Stack } from "@mui/material";
 import { Straighten, NearMe } from "@mui/icons-material";
 
 interface GeoPanelProps {

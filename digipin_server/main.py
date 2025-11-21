@@ -91,6 +91,26 @@ class NearestRequest(BaseModel):
         return value
 
 
+
+class EncodeResponse(BaseModel):
+    pin: str
+
+
+class DecodeResponse(BaseModel):
+    latitude: float
+    longitude: float
+
+
+class DistanceResponse(BaseModel):
+    distance_meters: float
+    start_pin: str
+    end_pin: str
+
+
+class NearestResponse(BaseModel):
+    nearest: str
+
+
 class AgentPrompt(BaseModel):
     message: str = Field(..., min_length=1)
     context: Optional[Dict[str, Any]] = None
@@ -122,37 +142,39 @@ async def health() -> Dict[str, Any]:
     }
 
 
-@app.post("/api/digipin/encode")
-async def api_encode(payload: EncodeRequest) -> Dict[str, Any]:
+@app.post("/api/digipin/encode", response_model=EncodeResponse)
+async def api_encode(payload: EncodeRequest) -> EncodeResponse:
     try:
         pin = encode_coordinates(payload.latitude, payload.longitude)
-        return {"pin": pin}
+        return EncodeResponse(pin=pin)
     except DigiPinValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@app.post("/api/digipin/decode")
-async def api_decode(payload: DecodeRequest) -> Dict[str, Any]:
+@app.post("/api/digipin/decode", response_model=DecodeResponse)
+async def api_decode(payload: DecodeRequest) -> DecodeResponse:
     try:
         decoded = decode_digipin(payload.pin)
-        return decoded.model_dump()
+        return DecodeResponse(**decoded.model_dump())
     except DigiPinValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@app.post("/api/digipin/distance")
+@app.post("/api/digipin/distance", response_model=DistanceResponse)
 async def api_distance(payload: DistanceRequest) -> Dict[str, Any]:
     try:
-        return get_distance_summary(payload.start_pin, payload.end_pin)
+        # get_distance_summary returns a dict, we can let Pydantic validate it or wrap it
+        result = get_distance_summary(payload.start_pin, payload.end_pin)
+        return result
     except DigiPinValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@app.post("/api/digipin/nearest")
-async def api_nearest(payload: NearestRequest) -> Dict[str, Any]:
+@app.post("/api/digipin/nearest", response_model=NearestResponse)
+async def api_nearest(payload: NearestRequest) -> NearestResponse:
     try:
         closest = nearest_pin(payload.reference_pin, payload.candidates)
-        return {"nearest": closest}
+        return NearestResponse(nearest=closest)
     except DigiPinValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

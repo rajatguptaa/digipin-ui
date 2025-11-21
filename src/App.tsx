@@ -1,45 +1,35 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
-  AppBar,
-  Toolbar,
-  Typography,
-  Tabs,
-  Tab,
   Box,
-  Paper,
-  TextField,
-  Button,
+  Fab,
+  SpeedDial,
+  SpeedDialAction,
+  SpeedDialIcon,
+  Tooltip,
   IconButton,
+  Paper,
+  Typography,
+  List,
+  ListItem,
+  ListItemText,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Chip,
-  CircularProgress,
-  Alert,
-  Autocomplete,
-  Fab,
-  ThemeProvider,
-  createTheme,
-  CssBaseline,
-  useMediaQuery,
-  List,
-  ListItem,
-  ListItemText,
-  Tooltip,
+  Button,
+  TextField,
   Snackbar,
-  SpeedDial,
-  SpeedDialAction,
-  SpeedDialIcon,
+  Autocomplete,
+  CircularProgress,
+  Tabs,
+  Tab,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
 import {
   MyLocation,
-  Info,
   Search,
   LocationOn,
-  ContentCopy,
-  CheckCircle,
   Straighten,
   Close,
   Star,
@@ -49,9 +39,7 @@ import {
   GpsFixed,
   Storage as StorageIcon,
 } from "@mui/icons-material";
-import { MapContainer, Marker, useMapEvents, useMap, Rectangle, Polyline, Circle } from "react-leaflet";
-import MapView from "./components/MapView";
-import DigipinAssistant from "./components/DigipinAssistant";
+import { Marker, useMapEvents, useMap, Polyline, Circle } from "react-leaflet";
 import L from "leaflet";
 import {
   getDigiPin,
@@ -62,10 +50,19 @@ import {
   findNearest,
 } from "digipinjs";
 import "./App.css";
+
+// Components
+import MapView from "./components/MapView";
+import DigipinAssistant from "./components/DigipinAssistant";
 import { MapTabPanel } from "./components/MapRouter";
-import BaseLayers, { BaseKey } from "./components/BaseLayers";
+import { BaseKey } from "./components/BaseLayers";
 import MobileBottomSheet from "./components/MobileBottomSheet";
-import { AppLogo } from "./components/AppLogo";
+import { MainLayout } from "./layout/MainLayout";
+import { EncodePanel } from "./features/encode/EncodePanel";
+import { DecodePanel } from "./features/decode/DecodePanel";
+import { BatchPanel } from "./features/batch/BatchPanel";
+import { GeoPanel } from "./features/geo/GeoPanel";
+import { Location, SearchResult, FavoriteItem } from "./types";
 
 // Fix default marker icon issue in leaflet
 // @ts-ignore
@@ -75,97 +72,6 @@ L.Icon.Default.mergeOptions({
   iconUrl: require("leaflet/dist/images/marker-icon.png"),
   shadowUrl: require("leaflet/dist/images/marker-shadow.png"),
 });
-
-// Create dark theme
-const darkTheme = createTheme({
-  palette: {
-    mode: "dark",
-    primary: {
-      main: "#64b5f6",
-      light: "#9be7ff",
-      dark: "#2286c3",
-    },
-    secondary: {
-      main: "#81c784",
-      light: "#b2fab4",
-      dark: "#519657",
-    },
-    background: {
-      default: "#0a0a0a",
-      paper: "#1a1a1a",
-    },
-    text: {
-      primary: "#ffffff",
-      secondary: "#b0b0b0",
-    },
-  },
-  components: {
-    MuiPaper: {
-      styleOverrides: {
-        root: {
-          backgroundImage: "none",
-          backgroundColor: "rgba(45, 45, 45, 0.95)",
-          backdropFilter: "blur(10px)",
-          border: "1px solid rgba(255, 255, 255, 0.1)",
-        },
-      },
-    },
-    MuiAppBar: {
-      styleOverrides: {
-        root: {
-          backgroundImage: "none",
-          backgroundColor: "rgba(26, 26, 26, 0.95)",
-          backdropFilter: "blur(10px)",
-          borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
-        },
-      },
-    },
-    MuiTextField: {
-      styleOverrides: {
-        root: {
-          "& .MuiOutlinedInput-root": {
-            backgroundColor: "rgba(255, 255, 255, 0.05)",
-            "&:hover": {
-              backgroundColor: "rgba(255, 255, 255, 0.08)",
-            },
-            "&.Mui-focused": {
-              backgroundColor: "rgba(255, 255, 255, 0.1)",
-            },
-          },
-        },
-      },
-    },
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          textTransform: "none",
-          fontWeight: 500,
-          borderRadius: 8,
-        },
-      },
-    },
-    MuiChip: {
-      styleOverrides: {
-        root: {
-          borderRadius: 6,
-        },
-      },
-    },
-  },
-});
-
-interface Location {
-  lat: number;
-  lng: number;
-  name?: string;
-}
-
-interface SearchResult {
-  place_id: number;
-  display_name: string;
-  lat: string;
-  lon: string;
-}
 
 // India bounds
 const indiaBounds: [[number, number], [number, number]] = [
@@ -188,17 +94,6 @@ function MapController({ center }: { center: [number, number] }) {
   React.useEffect(() => {
     map.setView(center, 12);
   }, [center, map]);
-  return null;
-}
-
-function ZoomEvents({ onZoomChange }: { onZoomChange: (z: number) => void }) {
-  useMapEvents({
-    zoomend: (e) => {
-      // @ts-ignore
-      const z = e.target.getZoom();
-      onZoomChange(z);
-    },
-  });
   return null;
 }
 
@@ -228,13 +123,6 @@ function MeasureToolOnMap({
     },
   });
   return null;
-}
-
-function QrImg({ value, size = 96 }: { value: string; size?: number }) {
-  const src = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(
-    value
-  )}`;
-  return <img src={src} width={size} height={size} alt="QR code" style={{ display: "block" }} />;
 }
 
 function LocationSelector({
@@ -332,382 +220,13 @@ function App() {
   const [measureDistance, setMeasureDistance] = useState<number | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [favoritesOpen, setFavoritesOpen] = useState(false);
-  const [favorites, setFavorites] = useState<
-    Array<{ id: number; label: string; lat: number; lng: number; pin: string }>
-  >([]);
+  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [favDialogOpen, setFavDialogOpen] = useState(false);
   const [favLabel, setFavLabel] = useState("");
   const [accuracyCenter, setAccuracyCenter] = useState<[number, number] | null>(null);
   const [accuracyRadius, setAccuracyRadius] = useState<number | null>(null);
   const [panelCollapsed, setPanelCollapsed] = useState(false);
 
-  const renderEncodeSingle = () => (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <Typography variant="h6" gutterBottom sx={{ color: "#ffffff" }}>
-        Convert Coordinates to DIGIPIN
-      </Typography>
-
-      {invalidCoordinates && (
-        <Alert
-          severity="warning"
-          sx={{
-            backgroundColor: "rgba(255, 152, 0, 0.1)",
-            border: "1px solid rgba(255, 152, 0, 0.3)",
-          }}
-        >
-          <Typography variant="subtitle2" gutterBottom>
-            ⚠️ Invalid Location Selected
-          </Typography>
-          <Typography variant="body2">
-            Please click within the blue boundary (India) on the map to select valid coordinates.
-          </Typography>
-        </Alert>
-      )}
-
-      {locationName && (
-        <Alert severity="info" icon={<LocationOn />} sx={{ backgroundColor: "rgba(100, 181, 246, 0.1)" }}>
-          <Typography variant="subtitle2" gutterBottom>
-            Selected Location:
-          </Typography>
-          <Typography variant="body2">{locationName}</Typography>
-        </Alert>
-      )}
-
-      {loadingLocation && (
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, p: 1 }}>
-          <CircularProgress size={16} sx={{ color: "#64b5f6" }} />
-          <Typography variant="body2" color="text.secondary">
-            Getting location name...
-          </Typography>
-        </Box>
-      )}
-
-      <TextField
-        label="Latitude"
-        placeholder="e.g., 28.6139"
-        value={encodeLat}
-        onChange={(e) => setEncodeLat(e.target.value)}
-        fullWidth
-        variant="outlined"
-        size="small"
-      />
-
-      <TextField
-        label="Longitude"
-        placeholder="e.g., 77.2090"
-        value={encodeLng}
-        onChange={(e) => setEncodeLng(e.target.value)}
-        fullWidth
-        variant="outlined"
-        size="small"
-      />
-
-      <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-        <Button
-          variant="contained"
-          onClick={encodeCoordinates}
-          sx={{ mt: 1, backgroundColor: "#64b5f6", "&:hover": { backgroundColor: "#42a5f5" } }}
-        >
-          Generate DIGIPIN
-        </Button>
-        <Button variant="outlined" onClick={openSaveFavorite} disabled={!encodeResult}>
-          Save Favorite
-        </Button>
-      </Box>
-
-      {encodeResult && (
-        <Alert severity="success" sx={{ mt: 2, backgroundColor: "rgba(129, 199, 132, 0.1)" }}>
-          <Typography variant="subtitle2" gutterBottom>
-            DIGIPIN Generated:
-          </Typography>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1, flexWrap: "wrap" }}>
-            <Chip
-              label={encodeResult}
-              color="primary"
-              variant="filled"
-              sx={{ fontSize: "1.1rem", fontWeight: "bold", backgroundColor: "#64b5f6" }}
-            />
-            <IconButton size="small" onClick={() => copyToClipboard(encodeResult)} sx={{ color: "#64b5f6" }}>
-              {copied ? <CheckCircle /> : <ContentCopy />}
-            </IconButton>
-          </Box>
-          {selectedLocation && (
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 2, flexWrap: "wrap" }}>
-              <Button
-                variant="outlined"
-                href={`https://www.google.com/maps?q=${selectedLocation.lat},${selectedLocation.lng}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                sx={{ borderColor: "#64b5f6", color: "#64b5f6" }}
-                startIcon={<LocationOn />}
-              >
-                Open in Google Maps
-              </Button>
-              <Tooltip title="Copy Google Maps link">
-                <IconButton
-                  size="small"
-                  onClick={() =>
-                    navigator.clipboard.writeText(
-                      `https://www.google.com/maps?q=${selectedLocation.lat},${selectedLocation.lng}`
-                    )
-                  }
-                  sx={{ color: "#64b5f6" }}
-                >
-                  <LinkIcon />
-                </IconButton>
-              </Tooltip>
-              <Box sx={{ p: 1, backgroundColor: "rgba(255,255,255,0.9)", borderRadius: 1 }}>
-                <QrImg value={`https://www.google.com/maps?q=${selectedLocation.lat},${selectedLocation.lng}`} size={96} />
-              </Box>
-            </Box>
-          )}
-        </Alert>
-      )}
-
-      {encodeError && (
-        <Alert severity="error" sx={{ mt: 2 }}>
-          {encodeError}
-        </Alert>
-      )}
-    </Box>
-  );
-
-  const renderBatchTools = () => (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 3,
-        width: "100%",
-        maxWidth: { xs: "100vw", sm: 600 },
-        mx: "auto",
-        p: { xs: 1, sm: 2 },
-      }}
-    >
-      <Typography variant="h6" sx={{ color: "#ffffff" }}>
-        Batch Encode / Decode
-      </Typography>
-      <TextField
-        label="Input (lat,lng per line or DIGIPIN per line)"
-        placeholder={"28.6139,77.2090\n19.0760,72.8777\nor\n39J-438-TJC7\n4FK-595-8823"}
-        value={batchInput}
-        onChange={(e) => setBatchInput(e.target.value)}
-        multiline
-        minRows={4}
-        fullWidth
-        variant="outlined"
-        size="small"
-        sx={{ fontSize: { xs: "0.95rem", sm: "1rem" } }}
-      />
-      <Box sx={{ display: "flex", gap: 2, flexDirection: { xs: "column", sm: "row" } }}>
-        <Button variant="contained" onClick={handleBatchEncode} sx={{ backgroundColor: "#64b5f6" }}>
-          Batch Encode
-        </Button>
-        <Button variant="contained" onClick={handleBatchDecode} sx={{ backgroundColor: "#64b5f6" }}>
-          Batch Decode
-        </Button>
-      </Box>
-      {batchError && <Alert severity="error">{batchError}</Alert>}
-      {batchResult.length > 0 && (
-        <Box sx={{ overflowX: "auto" }}>
-          <Typography variant="subtitle2" sx={{ color: "#ffffff" }}>
-            Results:
-          </Typography>
-          <Paper
-            sx={{
-              mt: 1,
-              p: 1,
-              backgroundColor: "rgba(100,181,246,0.05)",
-              width: "100%",
-              minWidth: 0,
-            }}
-          >
-            <table
-              style={{
-                width: "100%",
-                color: "#fff",
-                fontSize: "0.95rem",
-                wordBreak: "break-all",
-              }}
-            >
-              <thead>
-                <tr>
-                  <th style={{ textAlign: "left" }}>Input</th>
-                  <th style={{ textAlign: "left" }}>Result</th>
-                </tr>
-              </thead>
-              <tbody>
-                {batchResult.map((row, i) => (
-                  <tr key={i}>
-                    <td>{row.input}</td>
-                    <td>{typeof row.result === "string" ? row.result : JSON.stringify(row.result)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Paper>
-        </Box>
-      )}
-    </Box>
-  );
-
-  const renderGeoTools = () => (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 3,
-        width: "100%",
-        maxWidth: { xs: "100vw", sm: 600 },
-        mx: "auto",
-        p: { xs: 1, sm: 2 },
-      }}
-    >
-      <Typography variant="h6" sx={{ color: "#ffffff" }}>
-        Geo Utilities
-      </Typography>
-
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, width: "100%" }}>
-        <Typography variant="subtitle2" sx={{ color: "#ffffff" }}>
-          Distance Between Two DIGIPINs
-        </Typography>
-        <TextField
-          label="DIGIPIN A"
-          value={geoPinA}
-          onChange={(e) => setGeoPinA(e.target.value)}
-          size="small"
-          fullWidth
-          sx={{ fontSize: { xs: "0.95rem", sm: "1rem" } }}
-        />
-        <TextField
-          label="DIGIPIN B"
-          value={geoPinB}
-          onChange={(e) => setGeoPinB(e.target.value)}
-          size="small"
-          fullWidth
-          sx={{ fontSize: { xs: "0.95rem", sm: "1rem" } }}
-        />
-        <Button
-          variant="contained"
-          onClick={handleGeoDistance}
-          sx={{
-            backgroundColor: "#64b5f6",
-            width: { xs: "100%", sm: "fit-content" },
-            alignSelf: { xs: "stretch", sm: "flex-start" },
-          }}
-        >
-          Calculate Distance
-        </Button>
-
-        {geoDistanceError && <Alert severity="error">{geoDistanceError}</Alert>}
-        {geoDistance !== null && <Alert severity="info">Distance: {geoDistance} meters</Alert>}
-      </Box>
-
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 3, width: "100%" }}>
-        <Typography variant="subtitle2" sx={{ color: "#ffffff" }}>
-          Find Nearest DIGIPIN
-        </Typography>
-        <TextField
-          label="Base DIGIPIN"
-          value={nearestBasePin}
-          onChange={(e) => setNearestBasePin(e.target.value)}
-          size="small"
-          fullWidth
-          sx={{ fontSize: { xs: "0.95rem", sm: "1rem" } }}
-        />
-        <TextField
-          label="List of DIGIPINs (comma or line separated)"
-          value={nearestList}
-          onChange={(e) => setNearestList(e.target.value)}
-          size="small"
-          multiline
-          minRows={2}
-          fullWidth
-          sx={{ fontSize: { xs: "0.95rem", sm: "1rem" } }}
-        />
-        <Button
-          variant="contained"
-          onClick={handleFindNearest}
-          sx={{
-            backgroundColor: "#64b5f6",
-            width: { xs: "100%", sm: "fit-content" },
-            alignSelf: { xs: "stretch", sm: "flex-start" },
-          }}
-        >
-          Find Nearest
-        </Button>
-        {nearestError && <Alert severity="error">{nearestError}</Alert>}
-        {nearestResult && <Alert severity="info">Nearest DIGIPIN: {nearestResult}</Alert>}
-      </Box>
-    </Box>
-  );
-
-  const renderDecodeSingle = () => (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 2,
-        width: "100%",
-        maxWidth: { xs: "100vw", sm: 600 },
-        mx: "auto",
-        p: { xs: 1, sm: 2 },
-      }}
-    >
-      <Typography variant="h6" sx={{ color: "#ffffff" }}>
-        Convert DIGIPIN to Coordinates
-      </Typography>
-      <TextField
-        label="DIGIPIN"
-        value={decodeDigipin}
-        onChange={(e) => setDecodeDigipin(e.target.value)}
-        fullWidth
-        size="small"
-      />
-      <Button variant="contained" onClick={decodeDigipinCode} sx={{ backgroundColor: "#64b5f6", width: { xs: "100%", sm: "fit-content" } }}>
-        Decode Coordinates
-      </Button>
-      {decodeResult && (
-        <Alert severity="success" sx={{ backgroundColor: "rgba(129,199,132,0.1)" }}>
-          <Typography variant="subtitle2" gutterBottom>
-            Coordinates Found:
-          </Typography>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 1 }}>
-            <Chip label={`Latitude: ${decodeResult.lat}`} color="primary" variant="outlined" icon={<LocationOn />} sx={{ borderColor: "#64b5f6", color: "#64b5f6" }} />
-            <Chip label={`Longitude: ${decodeResult.lng}`} color="primary" variant="outlined" icon={<LocationOn />} sx={{ borderColor: "#64b5f6", color: "#64b5f6" }} />
-          </Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 2, flexWrap: "wrap" }}>
-            <Button
-              variant="outlined"
-              href={`https://www.google.com/maps?q=${decodeResult.lat},${decodeResult.lng}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={{ borderColor: "#64b5f6", color: "#64b5f6" }}
-              startIcon={<LocationOn />}
-            >
-              Open in Google Maps
-            </Button>
-            <Tooltip title="Copy Google Maps link">
-              <IconButton
-                size="small"
-                onClick={() =>
-                  navigator.clipboard.writeText(`https://www.google.com/maps?q=${decodeResult.lat},${decodeResult.lng}`)
-                }
-                sx={{ color: "#64b5f6" }}
-              >
-                <LinkIcon />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        </Alert>
-      )}
-      {decodeError && (
-        <Alert severity="error" sx={{ backgroundColor: "rgba(244, 67, 54, 0.1)" }}>
-          {decodeError}
-        </Alert>
-      )}
-    </Box>
-  );
   useEffect(() => {
     if (encodeSubTab !== 2) {
       setGeoDistance(null);
@@ -812,7 +331,7 @@ function App() {
     try {
       const raw = localStorage.getItem("digipin_favorites");
       if (raw) setFavorites(JSON.parse(raw));
-    } catch {}
+    } catch { }
   }, []);
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
@@ -943,7 +462,7 @@ function App() {
   useEffect(() => {
     try {
       localStorage.setItem("digipin_favorites", JSON.stringify(favorites));
-    } catch {}
+    } catch { }
   }, [favorites]);
 
   const openSaveFavorite = () => {
@@ -967,7 +486,7 @@ function App() {
   const deleteFavorite = (id: number) => {
     setFavorites((prev) => prev.filter((f) => f.id !== id));
   };
-  const goToFavorite = (f: { id: number; label: string; lat: number; lng: number; pin: string }) => {
+  const goToFavorite = (f: FavoriteItem) => {
     setPrimaryTab(0);
     setEncodeSubTab(0);
     setSelectedLocation({ lat: f.lat, lng: f.lng, name: f.label });
@@ -995,7 +514,7 @@ function App() {
       try {
         const pin = getDigiPin(lat, lng);
         setEncodeResult(pin);
-      } catch {}
+      } catch { }
       fetchLocationName(lat, lng);
       lastValidPositionRef.current = [lat, lng];
     } else {
@@ -1142,137 +661,154 @@ function App() {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
-  const encodeSingleContent = renderEncodeSingle();
-  const encodeBatchContent = renderBatchTools();
-  const encodeGeoContent = renderGeoTools();
-  const decodeContentView = renderDecodeSingle();
+  // Render content based on tabs
+  const encodeSingleContent = (
+    <EncodePanel
+      encodeLat={encodeLat}
+      setEncodeLat={setEncodeLat}
+      encodeLng={encodeLng}
+      setEncodeLng={setEncodeLng}
+      encodeResult={encodeResult}
+      encodeError={encodeError}
+      onEncode={encodeCoordinates}
+      onSaveFavorite={openSaveFavorite}
+      invalidCoordinates={invalidCoordinates}
+      locationName={locationName}
+      loadingLocation={loadingLocation}
+      selectedLocation={selectedLocation}
+      copied={copied}
+      onCopy={copyToClipboard}
+    />
+  );
+
+  const encodeBatchContent = (
+    <BatchPanel
+      batchInput={batchInput}
+      setBatchInput={setBatchInput}
+      batchResult={batchResult}
+      batchError={batchError}
+      onBatchEncode={handleBatchEncode}
+      onBatchDecode={handleBatchDecode}
+    />
+  );
+
+  const encodeGeoContent = (
+    <GeoPanel
+      geoPinA={geoPinA}
+      setGeoPinA={setGeoPinA}
+      geoPinB={geoPinB}
+      setGeoPinB={setGeoPinB}
+      geoDistance={geoDistance}
+      geoDistanceError={geoDistanceError}
+      onCalculateDistance={handleGeoDistance}
+      nearestBasePin={nearestBasePin}
+      setNearestBasePin={setNearestBasePin}
+      nearestList={nearestList}
+      setNearestList={setNearestList}
+      nearestResult={nearestResult}
+      nearestError={nearestError}
+      onFindNearest={handleFindNearest}
+    />
+  );
+
+  const decodeContentView = (
+    <DecodePanel
+      decodeDigipin={decodeDigipin}
+      setDecodeDigipin={setDecodeDigipin}
+      decodeResult={decodeResult}
+      decodeError={decodeError}
+      onDecode={decodeDigipinCode}
+    />
+  );
+
   const assistantContentView = <DigipinAssistant />;
 
   return (
-    <ThemeProvider theme={darkTheme}>
-      <CssBaseline />
-      <div
-        className="App"
-        style={{ backgroundColor: "#0a0a0a", minHeight: "100vh", display: "flex", flexDirection: "column" }}
-      >
-        <AppBar position="static" elevation={0}>
-          <Toolbar>
-            <AppLogo sx={{ flexGrow: 1 }} />
-            <IconButton onClick={() => setInfoOpen(true)} sx={{ color: "#64b5f6" }}>
-              <Info />
-            </IconButton>
-          </Toolbar>
-          <Tabs value={primaryTab} onChange={handleTabChange} centered sx={{ backgroundColor: "rgba(100, 181, 246, 0.1)" }}>
-            <Tab label="Encode" sx={{ color: "#64b5f6" }} />
-            <Tab label="Decode" sx={{ color: "#64b5f6" }} />
-            <Tab label="AI Assistant" sx={{ color: "#64b5f6" }} />
-          </Tabs>
-        </AppBar>
-
-        <Box component="main" sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
-          {isMobile ? (
-            <Box sx={{ width: "100vw", height: "calc(100vh - 56px)", position: "relative" }}>
-              {geoPinA && geoPinB ? (
-                <MapTabPanel geoPinA={geoPinA} geoPinB={geoPinB} />
-              ) : (
-                <MapContainer
-                  center={mapCenter}
-                  zoom={mapZoom}
-                  style={{ height: "100%", width: "100%", minHeight: 400 }}
-                  minZoom={4}
-                  maxBounds={indiaBounds}
-                  maxBoundsViscosity={1.0}
-                  bounds={indiaBounds}
-                >
-                  <BaseLayers initialBase={baseLayer} onBaseChange={(k) => setBaseLayer(k)} />
-                  <ZoomEvents onZoomChange={(z) => setMapZoom(z)} />
-                  <Rectangle
-                    bounds={indiaBounds}
-                    pathOptions={{ color: "#64b5f6", weight: 2, fillColor: "#64b5f6", fillOpacity: 0.1, dashArray: "5, 5" }}
-                  />
-                  <LocationSelector
-                    setLat={setEncodeLat}
-                    setLng={setEncodeLng}
-                    setLocationName={setLocationName}
-                    setLocationLoading={setLoadingLocation}
-                    setInvalidCoordinates={setInvalidCoordinates}
-                    setInvalidClickLocation={setInvalidClickLocation}
-                  />
-                  {selectedLocation && (
-                    <Marker position={[selectedLocation.lat, selectedLocation.lng]} draggable eventHandlers={{ dragend: onMarkerDragEnd }} />
-                  )}
-                  {accuracyCenter && accuracyRadius && (
-                    <Circle
-                      center={accuracyCenter as any}
-                      radius={accuracyRadius as number}
-                      pathOptions={{ color: "#64b5f6", weight: 1, fillColor: "#64b5f6", fillOpacity: 0.1 }}
-                    />
-                  )}
-                  {measurePoints.length > 0 && <Marker position={measurePoints[0] as any} />}
-                  {measurePoints.length === 2 && (
-                    <>
-                      <Marker position={measurePoints[1] as any} />
-                      <Polyline positions={measurePoints as any} pathOptions={{ color: "#ffeb3b", weight: 3 }} />
-                    </>
-                  )}
-                  <MeasureToolOnMap
-                    enabled={measureEnabled}
-                    points={measurePoints}
-                    onChange={(pts, dist) => {
-                      setMeasurePoints(pts);
-                      setMeasureDistance(dist);
-                    }}
-                  />
-                  {invalidClickLocation && (
-                    <Marker
-                      position={invalidClickLocation as any}
-                      icon={L.divIcon({
-                        className: "invalid-marker",
-                        html: '<div style="background-color: #f44336; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>',
-                        iconSize: [20, 20],
-                        iconAnchor: [10, 10],
-                      })}
-                    />
-                  )}
-                  <MapController center={mapCenter} />
-                </MapContainer>
-              )}
-              <Fab
-                color="default"
-                aria-label="open tools"
-                sx={{
-                  position: "absolute",
-                  bottom: { xs: "calc(env(safe-area-inset-bottom) + 20px)", sm: 20 },
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  zIndex: 2000,
-                  backgroundColor: "#2b2b2b",
-                  "&:hover": { backgroundColor: "#3a3a3a" },
-                }}
-                onClick={() => setMobileDrawerOpen(true)}
+    <MainLayout
+      onInfoClick={() => setInfoOpen(true)}
+      currentTab={primaryTab}
+      onTabChange={handleTabChange}
+    >
+      <Box sx={{ display: "flex", flexDirection: "row", height: "100%", width: "100vw" }}>
+        {/* Map Area */}
+        <Box
+          sx={{
+            flex: 1,
+            minWidth: 0,
+            height: "100%",
+            position: "relative",
+            display: isMobile && primaryTab !== 0 ? "none" : "block",
+          }}
+        >
+          <Box sx={{ width: "100%", height: "100%", position: "relative" }}>
+            {geoPinA && geoPinB ? (
+              <MapTabPanel geoPinA={geoPinA} geoPinB={geoPinB} />
+            ) : (
+              <MapView
+                center={mapCenter}
+                zoom={mapZoom}
+                indiaBounds={indiaBounds}
+                baseLayer={baseLayer}
+                onBaseChange={setBaseLayer}
+                onZoomChange={setMapZoom}
               >
-                <SpeedDialIcon />
-              </Fab>
+                <LocationSelector
+                  setLat={setEncodeLat}
+                  setLng={setEncodeLng}
+                  setLocationName={setLocationName}
+                  setLocationLoading={setLoadingLocation}
+                  setInvalidCoordinates={setInvalidCoordinates}
+                  setInvalidClickLocation={setInvalidClickLocation}
+                />
+                {selectedLocation && (
+                  <Marker
+                    position={[selectedLocation.lat, selectedLocation.lng]}
+                    draggable
+                    eventHandlers={{ dragend: onMarkerDragEnd }}
+                  />
+                )}
+                {accuracyCenter && accuracyRadius && (
+                  <Circle
+                    center={accuracyCenter}
+                    radius={accuracyRadius}
+                    pathOptions={{ color: "#64b5f6", weight: 1, fillColor: "#64b5f6", fillOpacity: 0.1 }}
+                  />
+                )}
+                {measurePoints.length > 0 && <Marker position={measurePoints[0]} />}
+                {measurePoints.length === 2 && (
+                  <>
+                    <Marker position={measurePoints[1]} />
+                    <Polyline positions={measurePoints} pathOptions={{ color: "#ffeb3b", weight: 3 }} />
+                  </>
+                )}
+                <MeasureToolOnMap
+                  enabled={measureEnabled}
+                  points={measurePoints}
+                  onChange={(pts, dist) => {
+                    setMeasurePoints(pts);
+                    setMeasureDistance(dist);
+                  }}
+                />
+                {invalidClickLocation && (
+                  <Marker
+                    position={invalidClickLocation}
+                    icon={L.divIcon({
+                      className: "invalid-marker",
+                      html: '<div style="background-color: #f44336; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>',
+                      iconSize: [20, 20],
+                      iconAnchor: [10, 10],
+                    })}
+                  />
+                )}
+              </MapView>
+            )}
+            {/* Fab removed */}
 
-              <MobileBottomSheet
-                open={mobileDrawerOpen}
-                onClose={() => setMobileDrawerOpen(false)}
-                primaryTab={primaryTab}
-                onPrimaryTabChange={setPrimaryTab}
-                encodeSubTab={encodeSubTab}
-                onEncodeSubTabChange={setEncodeSubTab}
-                encodeSingleContent={encodeSingleContent}
-                encodeBatchContent={encodeBatchContent}
-                encodeGeoContent={encodeGeoContent}
-                decodeContent={decodeContentView}
-                assistantContent={assistantContentView}
-              />
-            </Box>
-          ) : (
-            // DESKTOP
-            <Box sx={{ display: "flex", flexDirection: "row", height: "calc(100vh - 64px)", width: "100vw" }}>
-            {/* Map area */}
-            <Box sx={{ flex: 1, minWidth: 0, height: "100%", minHeight: 400, position: "relative" }}>
+            {/* MobileBottomSheet removed */}
+          </Box>
+
+          {!isMobile && (
+            <>
               {geoDistance ? (
                 <MapTabPanel geoPinA={geoPinA} geoPinB={geoPinB} />
               ) : (
@@ -1384,147 +920,158 @@ function App() {
                   />
                 </SpeedDial>
               )}
-            </Box>
-
-            {/* Control panel (SINGLE copy) */}
-            {!panelCollapsed && (
-              <Box
-                sx={{
-                  width: 400,
-                  maxWidth: 400,
-                  minWidth: 320,
-                  height: "100%",
-                  backgroundColor: "background.paper",
-                  borderLeft: "1px solid rgba(255,255,255,0.1)",
-                  display: "flex",
-                  flexDirection: "column",
-                  overflowY: "auto",
-                  position: "relative",
-                }}
-              >
-                <Box sx={{ position: "absolute", top: 8, right: 8, zIndex: 1 }}>
-                  <Tooltip title="Collapse tools">
-                    <IconButton size="small" onClick={() => setPanelCollapsed(true)} sx={{ color: "#64b5f6" }}>
-                      <Close />
-                    </IconButton>
-                  </Tooltip>
-                </Box>
-
-                <Box sx={{ width: "100%", height: "100%", overflowY: "auto", p: 0 }}>
-                  <Tabs value={primaryTab} onChange={handleTabChange} variant="fullWidth" sx={{ backgroundColor: "rgba(100, 181, 246, 0.1)" }}>
-                    <Tab label="Encode" sx={{ color: "#64b5f6" }} />
-                    <Tab label="Decode" sx={{ color: "#64b5f6" }} />
-                    <Tab label="AI Assistant" sx={{ color: "#64b5f6" }} />
-                  </Tabs>
-                  <Box sx={{ p: { xs: 1, sm: 2 } }}>
-                    {primaryTab === 0 && (
-                      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                        <Tabs
-                          value={encodeSubTab}
-                          onChange={handleEncodeTabChange}
-                          variant="fullWidth"
-                          sx={{ backgroundColor: "rgba(100, 181, 246, 0.08)" }}
-                        >
-                          <Tab value={0} label="Single Encode" sx={{ color: "#64b5f6" }} />
-                          <Tab value={1} label="Batch Tools" sx={{ color: "#64b5f6" }} />
-                          <Tab value={2} label="Geo Utilities" sx={{ color: "#64b5f6" }} />
-                        </Tabs>
-                        <Box sx={{ mt: 1 }}>
-                          {encodeSubTab === 0 && encodeSingleContent}
-                          {encodeSubTab === 1 && encodeBatchContent}
-                          {encodeSubTab === 2 && encodeGeoContent}
-                        </Box>
-                      </Box>
-                    )}
-                    {primaryTab === 1 && <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>{decodeContentView}</Box>}
-                    {primaryTab === 2 && <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>{assistantContentView}</Box>}
-                  </Box>
-                </Box>
-
-
-              </Box>
-            )}
-          </Box>
+            </>
           )}
         </Box>
 
-        {/* Search Bar */}
-        <Paper
-          elevation={4}
-          sx={{
-            position: "absolute",
-            top: 20,
-            left: 20,
-            width: 350,
-            zIndex: 2000,
-            borderRadius: 2,
-            border: "1px solid rgba(255, 255, 255, 0.1)",
-          }}
-        >
-          <Box sx={{ p: 2 }}>
-            <Autocomplete
-              freeSolo
-              options={searchResults}
-              disablePortal={false}
-              slotProps={{ popper: { sx: { zIndex: 2000 } } }}
-              getOptionLabel={(option) => (typeof option === "string" ? option : option.display_name)}
-              inputValue={searchQuery}
-              onInputChange={(_, newInputValue) => {
-                setSearchQuery(newInputValue);
-              }}
-              onChange={(_, newValue) => {
-                if (newValue && typeof newValue !== "string") {
-                  handleSearchSelect(newValue);
-                }
-              }}
-              loading={searching}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  placeholder="Search places in India..."
-                  variant="outlined"
-                  size="small"
-                  InputProps={{
-                    ...params.InputProps,
-                    startAdornment: <Search sx={{ mr: 1, color: "text.secondary" }} />,
-                    endAdornment: (
-                      <>
-                        {searching ? <CircularProgress color="inherit" size={20} /> : null}
-                        {params.InputProps.endAdornment}
-                      </>
-                    ),
-                  }}
-                />
-              )}
-              renderOption={(props, option) => (
-                <Box component="li" {...props}>
-                  <LocationOn sx={{ mr: 1, color: "text.secondary" }} />
-                  <Typography variant="body2" noWrap>
-                    {option.display_name}
-                  </Typography>
-                </Box>
-              )}
-              noOptionsText="No places found"
-              sx={{ width: "100%" }}
-            />
-          </Box>
-        </Paper>
+        {/* Sidebar Panel (Desktop) */}
+        {!isMobile && !panelCollapsed && (
+          <Box
+            sx={{
+              width: 400,
+              maxWidth: 400,
+              minWidth: 320,
+              height: "100%",
+              backgroundColor: "background.paper",
+              borderLeft: "1px solid rgba(255,255,255,0.1)",
+              display: "flex",
+              flexDirection: "column",
+              overflowY: "auto",
+              position: "relative",
+            }}
+          >
+            <Box sx={{ position: "absolute", top: 8, right: 8, zIndex: 1 }}>
+              <Tooltip title="Collapse tools">
+                <IconButton size="small" onClick={() => setPanelCollapsed(true)} sx={{ color: "#64b5f6" }}>
+                  <Close />
+                </IconButton>
+              </Tooltip>
+            </Box>
 
+            <Box sx={{ width: "100%", height: "100%", overflowY: "auto", p: 0 }}>
+              <Tabs
+                value={primaryTab}
+                onChange={handleTabChange}
+                variant="fullWidth"
+                sx={{ backgroundColor: "rgba(100, 181, 246, 0.1)" }}
+              >
+                <Tab label="Encode" sx={{ color: "#64b5f6" }} />
+                <Tab label="Decode" sx={{ color: "#64b5f6" }} />
+                <Tab label="AI Assistant" sx={{ color: "#64b5f6" }} />
+              </Tabs>
+              <Box sx={{ p: { xs: 1, sm: 2 } }}>
+                {primaryTab === 0 && (
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <Tabs
+                      value={encodeSubTab}
+                      onChange={handleEncodeTabChange}
+                      variant="fullWidth"
+                      sx={{ backgroundColor: "rgba(100, 181, 246, 0.08)" }}
+                    >
+                      <Tab value={0} label="Single" sx={{ color: "#64b5f6" }} />
+                      <Tab value={1} label="Batch" sx={{ color: "#64b5f6" }} />
+                      <Tab value={2} label="Geo" sx={{ color: "#64b5f6" }} />
+                    </Tabs>
+                    <Box sx={{ mt: 1 }}>
+                      {encodeSubTab === 0 && encodeSingleContent}
+                      {encodeSubTab === 1 && encodeBatchContent}
+                      {encodeSubTab === 2 && encodeGeoContent}
+                    </Box>
+                  </Box>
+                )}
+                {primaryTab === 1 && (
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>{decodeContentView}</Box>
+                )}
+                {primaryTab === 2 && (
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>{assistantContentView}</Box>
+                )}
+              </Box>
+            </Box>
+          </Box>
+        )}
+      </Box>
+
+      {/* Search Bar */}
+      <Paper
+        elevation={4}
+        sx={{
+          position: "absolute",
+          top: 80,
+          left: 20,
+          width: 350,
+          zIndex: 1000,
+          borderRadius: 2,
+          border: "1px solid rgba(255, 255, 255, 0.1)",
+        }}
+      >
+        <Box sx={{ p: 2 }}>
+          <Autocomplete
+            freeSolo
+            options={searchResults}
+            disablePortal={false}
+            slotProps={{ popper: { sx: { zIndex: 2000 } } }}
+            getOptionLabel={(option) => (typeof option === "string" ? option : option.display_name)}
+            inputValue={searchQuery}
+            onInputChange={(_, newInputValue) => {
+              setSearchQuery(newInputValue);
+            }}
+            onChange={(_, newValue) => {
+              if (newValue && typeof newValue !== "string") {
+                handleSearchSelect(newValue);
+              }
+            }}
+            loading={searching}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                placeholder="Search places in India..."
+                variant="outlined"
+                size="small"
+                InputProps={{
+                  ...params.InputProps,
+                  startAdornment: <Search sx={{ mr: 1, color: "text.secondary" }} />,
+                  endAdornment: (
+                    <>
+                      {searching ? <CircularProgress color="inherit" size={20} /> : null}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
+              />
+            )}
+            renderOption={(props, option) => (
+              <Box component="li" {...props}>
+                <LocationOn sx={{ mr: 1, color: "text.secondary" }} />
+                <Typography variant="body2" noWrap>
+                  {option.display_name}
+                </Typography>
+              </Box>
+            )}
+            noOptionsText="No places found"
+            sx={{ width: "100%" }}
+          />
+        </Box>
+      </Paper>
+
+      {/* Floating Action Buttons */}
+      <Box
+        sx={{
+          position: "absolute",
+          bottom: { xs: "calc(env(safe-area-inset-bottom) + 80px)", sm: 30 },
+          left: { xs: "auto", sm: 20 },
+          right: { xs: 20, sm: "auto" },
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+          zIndex: 1000,
+        }}
+      >
         {/* Current Location */}
         <Fab
           color="primary"
           aria-label="current location"
-          sx={{
-            position: "absolute",
-            bottom: { xs: "calc(env(safe-area-inset-bottom) + 20px)", sm: 20 },
-            right: { xs: 20, sm: "auto" },
-            left: { xs: "auto", sm: 20 },
-            zIndex: 2000,
-            backgroundColor: "#64b5f6",
-            "&:hover": { backgroundColor: "#42a5f5" },
-            pointerEvents: "auto",
-          }}
           onClick={getCurrentLocation}
+          size="medium"
         >
           <MyLocation />
         </Fab>
@@ -1533,17 +1080,9 @@ function App() {
         <Fab
           color={measureEnabled ? "secondary" : "default"}
           aria-label="measure distance"
-          sx={{
-            position: "absolute",
-            bottom: { xs: "calc(env(safe-area-inset-bottom) + 88px)", sm: 88 },
-            right: { xs: 20, sm: "auto" },
-            left: { xs: "auto", sm: 20 },
-            zIndex: 2000,
-            backgroundColor: measureEnabled ? "#81c784" : "#2b2b2b",
-            "&:hover": { backgroundColor: measureEnabled ? "#66bb6a" : "#3a3a3a" },
-            pointerEvents: "auto",
-          }}
           onClick={() => setMeasureEnabled((v) => !v)}
+          size="medium"
+          sx={{ backgroundColor: measureEnabled ? "#81c784" : "#2b2b2b" }}
         >
           <Straighten />
         </Fab>
@@ -1553,43 +1092,12 @@ function App() {
           <Fab
             color="default"
             aria-label="clear measurement"
-            sx={{
-              position: "absolute",
-              bottom: { xs: "calc(env(safe-area-inset-bottom) + 156px)", sm: 156 },
-              right: { xs: 20, sm: "auto" },
-              left: { xs: "auto", sm: 20 },
-              zIndex: 2000,
-              backgroundColor: "#2b2b2b",
-              "&:hover": { backgroundColor: "#3a3a3a" },
-              pointerEvents: "auto",
-            }}
             onClick={clearMeasurement}
+            size="medium"
+            sx={{ backgroundColor: "#2b2b2b" }}
           >
             <Close />
           </Fab>
-        )}
-
-        {/* Measurement readout */}
-        {measureEnabled && measureDistance !== null && (
-          <Paper
-            elevation={4}
-            sx={{
-              position: "absolute",
-              bottom: 220,
-              left: { xs: "auto", sm: 20 },
-              right: { xs: 20, sm: "auto" },
-              zIndex: 2000,
-              borderRadius: 2,
-              border: "1px solid rgba(255, 255, 255, 0.1)",
-              px: 2,
-              py: 1,
-              backgroundColor: "rgba(0,0,0,0.6)",
-            }}
-          >
-            <Typography variant="body2" sx={{ color: "#fff" }}>
-              Distance: {measureDistance < 1000 ? `${measureDistance.toFixed(0)} m` : `${(measureDistance / 1000).toFixed(2)} km`}
-            </Typography>
-          </Paper>
         )}
 
         {/* Recenter */}
@@ -1597,17 +1105,9 @@ function App() {
           <Fab
             color="default"
             aria-label="recenter"
-            sx={{
-              position: "absolute",
-              bottom: { xs: "calc(env(safe-area-inset-bottom) + 292px)", sm: 292 },
-              right: { xs: 20, sm: "auto" },
-              left: { xs: "auto", sm: 20 },
-              zIndex: 2000,
-              backgroundColor: "#2b2b2b",
-              "&:hover": { backgroundColor: "#3a3a3a" },
-              pointerEvents: "auto",
-            }}
             onClick={() => setMapCenter([selectedLocation.lat, selectedLocation.lng])}
+            size="medium"
+            sx={{ backgroundColor: "#2b2b2b" }}
           >
             <GpsFixed />
           </Fab>
@@ -1617,185 +1117,193 @@ function App() {
         <Fab
           color="default"
           aria-label="copy link"
-          sx={{
-            position: "absolute",
-            bottom: { xs: "calc(env(safe-area-inset-bottom) + 360px)", sm: 360 },
-            right: { xs: 20, sm: "auto" },
-            left: { xs: "auto", sm: 20 },
-            zIndex: 2000,
-            backgroundColor: "#2b2b2b",
-            "&:hover": { backgroundColor: "#3a3a3a" },
-            pointerEvents: "auto",
-          }}
           onClick={() => {
             navigator.clipboard.writeText(window.location.href);
             setCopiedLink(true);
             setTimeout(() => setCopiedLink(false), 2000);
           }}
+          size="medium"
+          sx={{ backgroundColor: "#2b2b2b" }}
         >
           <LinkIcon />
         </Fab>
-
-        <Snackbar open={copiedLink} message="Link copied" anchorOrigin={{ vertical: "bottom", horizontal: "left" }} />
 
         {/* Favorites toggle */}
         <Fab
           color={favoritesOpen ? "secondary" : "default"}
           aria-label="favorites"
-          sx={{
-            position: "absolute",
-            bottom: { xs: "calc(env(safe-area-inset-bottom) + 428px)", sm: 428 },
-            right: { xs: 20, sm: "auto" },
-            left: { xs: "auto", sm: 20 },
-            zIndex: 2000,
-            backgroundColor: favoritesOpen ? "#81c784" : "#2b2b2b",
-            "&:hover": { backgroundColor: favoritesOpen ? "#66bb6a" : "#3a3a3a" },
-            pointerEvents: "auto",
-          }}
           onClick={() => setFavoritesOpen((v) => !v)}
+          size="medium"
+          sx={{ backgroundColor: favoritesOpen ? "#81c784" : "#2b2b2b" }}
         >
           {favoritesOpen ? <Star /> : <StarBorder />}
         </Fab>
+      </Box>
 
-        {favoritesOpen && (
-          <Paper
-            elevation={4}
-            sx={{
-              position: "absolute",
-              top: 20,
-              right: 20,
-              width: 320,
-              maxHeight: "70vh",
-              overflowY: "auto",
-              zIndex: 2000,
-              borderRadius: 2,
-              border: "1px solid rgba(255, 255, 255, 0.1)",
-            }}
-          >
-            <Box sx={{ p: 2 }}>
-              <Typography variant="subtitle1" sx={{ color: "#fff", mb: 1 }}>
-                Favorites
-              </Typography>
-              <List dense>
-                {favorites.length === 0 && (
-                  <Typography variant="body2" color="text.secondary">
-                    No favorites yet. Save one from the Encode tab.
-                  </Typography>
-                )}
-                {favorites.map((f) => (
-                  <ListItem
-                    key={f.id}
-                    secondaryAction={
-                      <Box>
-                        <Tooltip title="Go to">
-                          <IconButton onClick={() => goToFavorite(f)} sx={{ color: "#64b5f6" }}>
-                            <GpsFixed />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete">
-                          <IconButton onClick={() => deleteFavorite(f.id)} sx={{ color: "#f44336" }}>
-                            <Delete />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
+      {/* Measurement readout */}
+      {measureEnabled && measureDistance !== null && (
+        <Paper
+          elevation={4}
+          sx={{
+            position: "absolute",
+            bottom: 100,
+            left: { xs: "auto", sm: 80 },
+            right: { xs: 20, sm: "auto" },
+            zIndex: 1000,
+            borderRadius: 2,
+            border: "1px solid rgba(255, 255, 255, 0.1)",
+            px: 2,
+            py: 1,
+            backgroundColor: "rgba(0,0,0,0.6)",
+          }}
+        >
+          <Typography variant="body2" sx={{ color: "#fff" }}>
+            Distance: {measureDistance < 1000 ? `${measureDistance.toFixed(0)} m` : `${(measureDistance / 1000).toFixed(2)} km`}
+          </Typography>
+        </Paper>
+      )}
+
+      <Snackbar open={copiedLink} message="Link copied" anchorOrigin={{ vertical: "bottom", horizontal: "left" }} />
+
+      {/* Favorites Panel */}
+      {favoritesOpen && (
+        <Paper
+          elevation={4}
+          sx={{
+            position: "absolute",
+            top: 80,
+            right: 20,
+            width: 320,
+            maxHeight: "70vh",
+            overflowY: "auto",
+            zIndex: 2000,
+            borderRadius: 2,
+            border: "1px solid rgba(255, 255, 255, 0.1)",
+          }}
+        >
+          <Box sx={{ p: 2 }}>
+            <Typography variant="subtitle1" sx={{ color: "#fff", mb: 1 }}>
+              Favorites
+            </Typography>
+            <List dense>
+              {favorites.length === 0 && (
+                <Typography variant="body2" color="text.secondary">
+                  No favorites yet. Save one from the Encode tab.
+                </Typography>
+              )}
+              {favorites.map((f) => (
+                <ListItem
+                  key={f.id}
+                  secondaryAction={
+                    <Box>
+                      <Tooltip title="Go to">
+                        <IconButton onClick={() => goToFavorite(f)} sx={{ color: "#64b5f6" }}>
+                          <GpsFixed />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete">
+                        <IconButton onClick={() => deleteFavorite(f.id)} sx={{ color: "#f44336" }}>
+                          <Delete />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  }
+                >
+                  <ListItemText
+                    primary={<Typography sx={{ color: "#fff" }}>{f.label}</Typography>}
+                    secondary={
+                      <Typography variant="caption" color="text.secondary">
+                        {f.pin}
+                      </Typography>
                     }
-                  >
-                    <ListItemText
-                      primary={<Typography sx={{ color: "#fff" }}>{f.label}</Typography>}
-                      secondary={
-                        <Typography variant="caption" color="text.secondary">
-                          {f.pin}
-                        </Typography>
-                      }
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </Box>
-          </Paper>
-        )}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Box>
+        </Paper>
+      )}
 
-        {/* Favorite label dialog */}
-        <Dialog open={favDialogOpen} onClose={() => setFavDialogOpen(false)} maxWidth="xs" fullWidth>
-          <DialogTitle sx={{ color: "#fff" }}>Save Favorite</DialogTitle>
-          <DialogContent>
-            <TextField
-              autoFocus
-              margin="dense"
-              label="Label"
-              fullWidth
-              variant="outlined"
-              value={favLabel}
-              onChange={(e) => setFavLabel(e.target.value)}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setFavDialogOpen(false)} sx={{ color: "#64b5f6" }}>
-              Cancel
-            </Button>
-            <Button onClick={saveFavorite} variant="contained" sx={{ backgroundColor: "#64b5f6" }}>
-              Save
-            </Button>
-          </DialogActions>
-        </Dialog>
+      {/* Favorite label dialog */}
+      <Dialog open={favDialogOpen} onClose={() => setFavDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ color: "#fff" }}>Save Favorite</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Label"
+            fullWidth
+            variant="outlined"
+            value={favLabel}
+            onChange={(e) => setFavLabel(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setFavDialogOpen(false)} sx={{ color: "#64b5f6" }}>
+            Cancel
+          </Button>
+          <Button onClick={saveFavorite} variant="contained" sx={{ backgroundColor: "#64b5f6" }}>
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-        {/* Info Dialog */}
-        <Dialog open={infoOpen} onClose={() => setInfoOpen(false)} maxWidth="sm" fullWidth>
-          <DialogTitle sx={{ color: "#ffffff" }}>
-            About DIGIPIN
-            <IconButton
-              aria-label="close"
-              onClick={() => setInfoOpen(false)}
-              sx={{ position: "absolute", right: 8, top: 8, color: "#64b5f6" }}
+      {/* Info Dialog */}
+      <Dialog open={infoOpen} onClose={() => setInfoOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ color: "#ffffff" }}>
+          About DIGIPIN
+          <IconButton
+            aria-label="close"
+            onClick={() => setInfoOpen(false)}
+            sx={{ position: "absolute", right: 8, top: 8, color: "#64b5f6" }}
+          >
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Typography paragraph sx={{ color: "#ffffff" }}>
+            DIGIPIN (Digital Postal Index Number) is a geocoding system for India that converts latitude and longitude
+            coordinates into a unique alphanumeric code.
+          </Typography>
+          <Typography paragraph sx={{ color: "#ffffff" }}>
+            <strong>Features:</strong>
+          </Typography>
+          <ul style={{ color: "#b0b0b0" }}>
+            <li>Search for places in India and navigate directly to them</li>
+            <li>Click anywhere on the map of India to select coordinates</li>
+            <li>Get location names automatically using reverse geocoding</li>
+            <li>Use the current location button to get your exact position</li>
+            <li>Convert coordinates to DIGIPIN and vice versa</li>
+            <li>Copy results to clipboard with one click</li>
+          </ul>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            Powered by{" "}
+            <a
+              href="https://github.com/rajatguptaa/digipinjs"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "#64b5f6" }}
             >
-              <Info />
-            </IconButton>
-          </DialogTitle>
-          <DialogContent>
-            <Typography paragraph sx={{ color: "#ffffff" }}>
-              DIGIPIN (Digital Postal Index Number) is a geocoding system for India that converts latitude and longitude
-              coordinates into a unique alphanumeric code.
-            </Typography>
-            <Typography paragraph sx={{ color: "#ffffff" }}>
-              <strong>Features:</strong>
-            </Typography>
-            <ul style={{ color: "#b0b0b0" }}>
-              <li>Search for places in India and navigate directly to them</li>
-              <li>Click anywhere on the map of India to select coordinates</li>
-              <li>Get location names automatically using reverse geocoding</li>
-              <li>Use the current location button to get your exact position</li>
-              <li>Convert coordinates to DIGIPIN and vice versa</li>
-              <li>Copy results to clipboard with one click</li>
-            </ul>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-              Powered by{" "}
-              <a
-                href="https://github.com/rajatguptaa/digipinjs"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: "#64b5f6" }}
-              >
-                digipinjs
-              </a>{" "}
-              and{" "}
-              <a
-                href="https://nominatim.openstreetmap.org/"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: "#64b5f6" }}
-              >
-                Nominatim
-              </a>
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setInfoOpen(false)} sx={{ color: "#64b5f6" }}>
-              Close
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </div>
-    </ThemeProvider>
+              digipinjs
+            </a>{" "}
+            and{" "}
+            <a
+              href="https://nominatim.openstreetmap.org/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "#64b5f6" }}
+            >
+              Nominatim
+            </a>
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setInfoOpen(false)} sx={{ color: "#64b5f6" }}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </MainLayout>
   );
 }
 

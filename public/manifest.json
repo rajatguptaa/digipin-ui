@@ -2,7 +2,11 @@
   "short_name": "DIGIPIN",
   "name": "DIGIPIN Explorer",
   "icons": [
-    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" },
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
     {
       "src": "logo192.png",
       "type": "image/png",

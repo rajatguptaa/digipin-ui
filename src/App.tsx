@@ -116,6 +116,7 @@ function App() {
   const [baseLayer, setBaseLayer] = useState<BaseKey>("cartoDark");
   const [mapZoom, setMapZoom] = useState(5);
   const [measureEnabled, setMeasureEnabled] = useState(false);
+  const [measurePoints, setMeasurePoints] = useState<[number, number][]>([]);
   const [measureDistance, setMeasureDistance] = useState<number | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [favoritesOpen, setFavoritesOpen] = useState(false);
@@ -123,6 +124,13 @@ function App() {
   const [favDialogOpen, setFavDialogOpen] = useState(false);
   const [favLabel, setFavLabel] = useState("");
   const [panelCollapsed, setPanelCollapsed] = useState(false);
+  const [mapInstance, setMapInstance] = useState<any>(null);
+  const [currentMarker, setCurrentMarker] = useState<any>(null);
+  const [measureMarkers, setMeasureMarkers] = useState<any[]>([]);
+  const [measurePolyline, setMeasurePolyline] = useState<any>(null);
+  const [geoMarkers, setGeoMarkers] = useState<any[]>([]);
+  const [geoPolyline, setGeoPolyline] = useState<any>(null);
+  const [isGeoVisualizationActive, setIsGeoVisualizationActive] = useState(false);
 
   useEffect(() => {
     if (encodeSubTab !== 2) {
@@ -227,7 +235,27 @@ function App() {
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setPrimaryTab(newValue);
-    if (newValue !== 0) setGeoDistance(null);
+    if (newValue !== 0) {
+      setGeoDistance(null);
+      // Clear geo markers and polyline when switching away from Encode tab
+      geoMarkers.forEach(marker => {
+        try {
+          marker.remove();
+        } catch (e) {
+          console.error("Error removing geo marker:", e);
+        }
+      });
+      setGeoMarkers([]);
+      setIsGeoVisualizationActive(false);
+      if (geoPolyline) {
+        try {
+          geoPolyline.remove();
+        } catch (e) {
+          console.error("Error removing geo polyline:", e);
+        }
+        setGeoPolyline(null);
+      }
+    }
     // Open mobile drawer when switching tabs on mobile
     if (isMobile) {
       setMobileDrawerOpen(true);
@@ -348,7 +376,28 @@ function App() {
   };
 
   const clearMeasurement = () => {
+    setMeasurePoints([]);
     setMeasureDistance(null);
+
+    // Clear measurement markers
+    measureMarkers.forEach(marker => {
+      try {
+        marker.remove();
+      } catch (e) {
+        console.error("Error removing measurement marker:", e);
+      }
+    });
+    setMeasureMarkers([]);
+
+    // Clear measurement polyline
+    if (measurePolyline) {
+      try {
+        measurePolyline.remove();
+      } catch (e) {
+        console.error("Error removing polyline:", e);
+      }
+      setMeasurePolyline(null);
+    }
   };
 
   useEffect(() => {
@@ -356,6 +405,137 @@ function App() {
       localStorage.setItem("digipin_favorites", JSON.stringify(favorites));
     } catch { }
   }, [favorites]);
+
+  // Manage marker on map
+  useEffect(() => {
+    if (!mapInstance || !window.mappls) return;
+
+    // Skip marker management if geo visualization is active
+    if (isGeoVisualizationActive) return;
+
+    // Remove old marker if exists
+    if (currentMarker) {
+      try {
+        currentMarker.remove();
+      } catch (e) {
+        console.error("Error removing marker:", e);
+      }
+    }
+
+    // Add new marker if location is selected
+    if (selectedLocation) {
+      try {
+        const marker = new window.mappls.Marker({
+          map: mapInstance,
+          position: { lat: selectedLocation.lat, lng: selectedLocation.lng },
+          draggable: true,
+        });
+
+        // Add drag event listener
+        marker.addListener("dragend", (e: any) => {
+          if (e.lngLat) {
+            const lat = e.lngLat.lat;
+            const lng = e.lngLat.lng;
+            if (isWithinIndia(lat, lng)) {
+              setSelectedLocation({ lat, lng });
+              setEncodeLat(lat.toFixed(6));
+              setEncodeLng(lng.toFixed(6));
+              setMapCenter([lat, lng]);
+              try {
+                const pin = getDigiPin(lat, lng);
+                setEncodeResult(pin);
+              } catch { }
+              fetchLocationName(lat, lng);
+            } else {
+              alert("⚠️ Please keep the marker within India. DIGIPIN only works for Indian coordinates.");
+              // Reset marker to previous position
+              marker.setPosition({ lat: selectedLocation.lat, lng: selectedLocation.lng });
+            }
+          }
+        });
+
+        setCurrentMarker(marker);
+      } catch (error) {
+        console.error("Error creating marker:", error);
+      }
+    }
+  }, [selectedLocation, mapInstance, isGeoVisualizationActive]);
+
+  // Manage measurement visualization (markers and polyline)
+  useEffect(() => {
+    if (!mapInstance || !window.mappls) return;
+
+    // Clear old measurement markers
+    measureMarkers.forEach(marker => {
+      try {
+        marker.remove();
+      } catch (e) {
+        console.error("Error removing old measurement marker:", e);
+      }
+    });
+
+    // Clear old polyline
+    if (measurePolyline) {
+      try {
+        measurePolyline.remove();
+      } catch (e) {
+        console.error("Error removing old polyline:", e);
+      }
+    }
+
+    // Create new markers for measurement points
+    const newMarkers: any[] = [];
+    measurePoints.forEach((point, index) => {
+      try {
+        const marker = new window.mappls.Marker({
+          map: mapInstance,
+          position: { lat: point[0], lng: point[1] },
+          icon: {
+            url: `data:image/svg+xml;base64,${btoa(`
+              <svg width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="8" fill="${index === 0 ? '#ef4444' : '#3b82f6'}" stroke="white" stroke-width="2"/>
+                <text x="12" y="16" text-anchor="middle" fill="white" font-size="12" font-weight="bold">${index + 1}</text>
+              </svg>
+            `)}`,
+            width: 24,
+            height: 24,
+          },
+        });
+        newMarkers.push(marker);
+      } catch (error) {
+        console.error("Error creating measurement marker:", error);
+      }
+    });
+
+    setMeasureMarkers(newMarkers);
+
+    // Draw polyline if we have 2 points
+    if (measurePoints.length === 2) {
+      try {
+        const polyline = new window.mappls.Polyline({
+          map: mapInstance,
+          paths: [
+            { lat: measurePoints[0][0], lng: measurePoints[0][1] },
+            { lat: measurePoints[1][0], lng: measurePoints[1][1] },
+          ],
+          strokeColor: '#3b82f6',
+          strokeWeight: 3,
+          strokeOpacity: 0.8,
+          dashArray: [10, 5],
+        });
+        setMeasurePolyline(polyline);
+      } catch (error) {
+        console.error("Error creating polyline:", error);
+      }
+    }
+  }, [measurePoints, mapInstance]);
+
+  // Clear measurements when measurement mode is disabled
+  useEffect(() => {
+    if (!measureEnabled && (measurePoints.length > 0 || measureDistance !== null)) {
+      clearMeasurement();
+    }
+  }, [measureEnabled]);
 
   const openSaveFavorite = () => {
     if (!selectedLocation || !encodeResult) return;
@@ -398,6 +578,7 @@ function App() {
       setEncodeLng(lng.toFixed(6));
       setLocationName(result.display_name);
       setMapCenter([lat, lng]);
+      setMapZoom(15); // Zoom to street level when selecting a search result
       setSearchQuery("");
       setSearchResults([]);
     } else {
@@ -411,11 +592,51 @@ function App() {
 
     if (coordinatesWithinIndia) {
       setInvalidCoordinates(false);
-      setEncodeLat(lat.toFixed(6));
-      setEncodeLng(lng.toFixed(6));
-      setSelectedLocation({ lat, lng });
-      setMapCenter([lat, lng]);
-      fetchLocationName(lat, lng);
+
+      // If measure mode is enabled, add point for distance measurement
+      if (measureEnabled) {
+        const newPoints = [...measurePoints, [lat, lng] as [number, number]];
+        setMeasurePoints(newPoints);
+
+        // Calculate distance if we have 2 points
+        if (newPoints.length === 2) {
+          try {
+            const [lat1, lng1] = newPoints[0];
+            const [lat2, lng2] = newPoints[1];
+            // Calculate distance using Haversine formula
+            const R = 6371e3; // Earth radius in meters
+            const φ1 = (lat1 * Math.PI) / 180;
+            const φ2 = (lat2 * Math.PI) / 180;
+            const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+            const Δλ = ((lng2 - lng1) * Math.PI) / 180;
+
+            const a =
+              Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+              Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const distance = R * c;
+
+            setMeasureDistance(distance);
+          } catch (error) {
+            console.error("Error calculating distance:", error);
+          }
+        }
+      } else {
+        // Normal mode: select location
+        setEncodeLat(lat.toFixed(6));
+        setEncodeLng(lng.toFixed(6));
+        setSelectedLocation({ lat, lng });
+        setMapCenter([lat, lng]);
+        fetchLocationName(lat, lng);
+
+        // Auto-encode the location
+        try {
+          const pin = getDigiPin(lat, lng);
+          setEncodeResult(pin);
+        } catch (error) {
+          console.error("Error encoding location:", error);
+        }
+      }
     } else {
       setInvalidCoordinates(true);
       setEncodeLat("");
@@ -503,14 +724,129 @@ function App() {
   const handleGeoDistance = () => {
     setGeoDistanceError("");
     setGeoDistance(null);
+
+    // Clear previous geo markers and polyline
+    geoMarkers.forEach(marker => {
+      try {
+        marker.remove();
+      } catch (e) {
+        console.error("Error removing geo marker:", e);
+      }
+    });
+    setGeoMarkers([]);
+    setIsGeoVisualizationActive(false);
+
+    if (geoPolyline) {
+      try {
+        geoPolyline.remove();
+      } catch (e) {
+        console.error("Error removing polyline:", e);
+      }
+      setGeoPolyline(null);
+    }
+
     try {
       if (!geoPinA || !geoPinB) {
         setGeoDistanceError("Please enter two DIGIPINs.");
         return;
       }
+
+      // Calculate distance
       const dist = getDistance(geoPinA.trim(), geoPinB.trim());
       setGeoDistance(dist);
-    } catch {
+
+      // Decode DIGIPINs to get coordinates
+      const coordsA = getLatLngFromDigiPin(geoPinA.trim());
+      const coordsB = getLatLngFromDigiPin(geoPinB.trim());
+
+      if (!coordsA || !coordsB) {
+        setGeoDistanceError("Could not decode one or both DIGIPINs.");
+        return;
+      }
+
+      const latA = coordsA.latitude;
+      const lngA = coordsA.longitude;
+      const latB = coordsB.latitude;
+      const lngB = coordsB.longitude;
+
+      // Create markers on the map
+      if (mapInstance && window.mappls) {
+        const newMarkers: any[] = [];
+
+        try {
+          console.log("Creating marker A at:", latA, lngA);
+          console.log("Creating marker B at:", latB, lngB);
+
+          // Marker A (default red marker)
+          const markerA = new window.mappls.Marker({
+            map: mapInstance,
+            position: { lat: latA, lng: lngA },
+            title: "DIGIPIN A",
+          });
+          newMarkers.push(markerA);
+          console.log("Marker A created:", markerA);
+
+          // Marker B (default red marker)
+          const markerB = new window.mappls.Marker({
+            map: mapInstance,
+            position: { lat: latB, lng: lngB },
+            title: "DIGIPIN B",
+          });
+          newMarkers.push(markerB);
+          console.log("Marker B created:", markerB);
+
+          setGeoMarkers(newMarkers);
+          console.log("Total markers created:", newMarkers.length);
+
+          // Draw polyline between the two points
+          const polyline = new window.mappls.Polyline({
+            map: mapInstance,
+            paths: [
+              { lat: latA, lng: lngA },
+              { lat: latB, lng: lngB },
+            ],
+            strokeColor: '#10b981',
+            strokeWeight: 3,
+            strokeOpacity: 0.8,
+            dashArray: [8, 4],
+          });
+          setGeoPolyline(polyline);
+          console.log("Polyline created");
+
+          // Set flag to prevent marker interference
+          setIsGeoVisualizationActive(true);
+
+          // Clear the regular marker to avoid interference
+          if (currentMarker) {
+            try {
+              currentMarker.remove();
+            } catch (e) {
+              console.error("Error removing current marker:", e);
+            }
+            setCurrentMarker(null);
+          }
+
+          // Adjust map to show both points
+          const centerLat = (latA + latB) / 2;
+          const centerLng = (lngA + lngB) / 2;
+          setMapCenter([centerLat, centerLng]);
+
+          // Calculate appropriate zoom level based on distance
+          let zoom = 5;
+          if (dist < 1000) zoom = 15;
+          else if (dist < 5000) zoom = 13;
+          else if (dist < 20000) zoom = 11;
+          else if (dist < 100000) zoom = 9;
+          else if (dist < 500000) zoom = 7;
+          setMapZoom(zoom);
+
+        } catch (error) {
+          console.error("Error creating geo visualization:", error);
+        }
+      }
+
+    } catch (error) {
+      console.error("Error in handleGeoDistance:", error);
       setGeoDistanceError("Invalid DIGIPIN(s) or error calculating distance.");
     }
   };
@@ -544,13 +880,6 @@ function App() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
-
-  // Open mobile drawer by default on mobile devices
-  useEffect(() => {
-    if (isMobile) {
-      setMobileDrawerOpen(true);
-    }
-  }, [isMobile]);
 
   // Render content based on tabs
   const encodeSingleContent = (
@@ -637,14 +966,7 @@ function App() {
               zoom={mapZoom}
               onClick={handleMapClick}
               onMapLoad={(map) => {
-                // Add marker logic here if needed, or use a separate effect
-                if (selectedLocation) {
-                  new window.mappls.Marker({
-                    map: map,
-                    position: { lat: selectedLocation.lat, lng: selectedLocation.lng },
-                    draggable: true,
-                  });
-                }
+                setMapInstance(map);
               }}
             />
           </Box>
@@ -768,26 +1090,6 @@ function App() {
               </Box>
             </Box>
           </Box>
-        )}
-
-        {/* Mobile Bottom Sheet */}
-        {isMobile && (
-          <MobileBottomSheet
-            open={mobileDrawerOpen}
-            onClose={() => setMobileDrawerOpen(false)}
-            primaryTab={primaryTab}
-            onPrimaryTabChange={(value) => {
-              setPrimaryTab(value);
-              setMobileDrawerOpen(true);
-            }}
-            encodeSubTab={encodeSubTab}
-            onEncodeSubTabChange={setEncodeSubTab}
-            encodeSingleContent={encodeSingleContent}
-            encodeBatchContent={encodeBatchContent}
-            encodeGeoContent={encodeGeoContent}
-            decodeContent={decodeContentView}
-            assistantContent={assistantContentView}
-          />
         )}
       </Box>
 

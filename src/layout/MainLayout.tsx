@@ -166,16 +166,58 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children, onInfoClick, c
             <CssBaseline />
             <Box sx={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", background: "#000" }}>
                 <AppBar position="static" elevation={0}>
-                    <Toolbar sx={{ height: 64 }}>
-                        <AppLogo />
-                        <Typography variant="h6" component="div" sx={{ flexGrow: 1, ml: 2, background: "linear-gradient(90deg, #fff, #9CA3AF)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                            DIGIPIN UI
-                        </Typography>
-                        <Tooltip title="About DIGIPIN">
-                            <IconButton onClick={onInfoClick} sx={{ color: "text.secondary", "&:hover": { color: "primary.main", background: "rgba(59, 130, 246, 0.1)" } }}>
-                                <Info />
-                            </IconButton>
-                        </Tooltip>
+                    <Toolbar sx={{ height: 80, px: { xs: 2, sm: 4 } }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexGrow: 1 }}>
+                            <AppLogo />
+                            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                                <Typography
+                                    variant="h5"
+                                    component="div"
+                                    sx={{
+                                        fontWeight: 700,
+                                        background: "linear-gradient(135deg, #60A5FA 0%, #3B82F6 50%, #2563EB 100%)",
+                                        WebkitBackgroundClip: "text",
+                                        WebkitTextFillColor: "transparent",
+                                        letterSpacing: "-0.02em",
+                                        display: { xs: "none", sm: "block" }
+                                    }}
+                                >
+                                    DIGIPIN
+                                </Typography>
+                                <Typography
+                                    variant="caption"
+                                    sx={{
+                                        color: "text.secondary",
+                                        fontWeight: 500,
+                                        letterSpacing: "0.05em",
+                                        textTransform: "uppercase",
+                                        fontSize: "0.7rem",
+                                        display: { xs: "none", md: "block" }
+                                    }}
+                                >
+                                    India's Smart Location System
+                                </Typography>
+                            </Box>
+                        </Box>
+
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                            <Tooltip title="About DIGIPIN">
+                                <IconButton
+                                    onClick={onInfoClick}
+                                    sx={{
+                                        color: "text.secondary",
+                                        transition: "all 0.3s ease",
+                                        "&:hover": {
+                                            color: "primary.main",
+                                            background: "rgba(59, 130, 246, 0.15)",
+                                            transform: "scale(1.1)"
+                                        }
+                                    }}
+                                >
+                                    <Info />
+                                </IconButton>
+                            </Tooltip>
+                        </Box>
                     </Toolbar>
                 </AppBar>
                 <Box sx={{ flexGrow: 1, overflow: "hidden", position: "relative", pb: isMobile ? "70px" : 0 }}>{children}</Box>

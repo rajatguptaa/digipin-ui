@@ -49,9 +49,9 @@ export function AppLogo({ sx }: AppLogoProps) {
           <circle cx="32" cy="28" r="7" fill="#ffffff" />
         </svg>
       </Box>
-      <Box component="span" sx={{ fontSize: "0.95em" }}>
+      {/* <Box component="span" sx={{ fontSize: "0.95em" }}>
         Digipin Explorer
-      </Box>
+      </Box> */}
     </Typography>
   );
 }

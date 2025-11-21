@@ -39,8 +39,7 @@ import {
   GpsFixed,
   Storage as StorageIcon,
 } from "@mui/icons-material";
-import { Marker, useMapEvents, useMap, Polyline, Circle } from "react-leaflet";
-import L from "leaflet";
+// Leaflet imports removed
 import {
   getDigiPin,
   getLatLngFromDigiPin,
@@ -51,8 +50,7 @@ import {
 } from "digipinjs";
 import "./App.css";
 
-// Components
-import MapView from "./components/MapView";
+import { MapplsMapView } from "./components/MapplsMapView";
 import DigipinAssistant from "./components/DigipinAssistant";
 import { MapTabPanel } from "./components/MapRouter";
 import { BaseKey } from "./components/BaseLayers";
@@ -64,14 +62,7 @@ import { BatchPanel } from "./features/batch/BatchPanel";
 import { GeoPanel } from "./features/geo/GeoPanel";
 import { Location, SearchResult, FavoriteItem } from "./types";
 
-// Fix default marker icon issue in leaflet
-// @ts-ignore
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: require("leaflet/dist/images/marker-icon-2x.png"),
-  iconUrl: require("leaflet/dist/images/marker-icon.png"),
-  shadowUrl: require("leaflet/dist/images/marker-shadow.png"),
-});
+// Map Handler Removed
 
 // India bounds
 const indiaBounds: [[number, number], [number, number]] = [
@@ -88,95 +79,7 @@ const isWithinIndia = (lat: number, lng: number): boolean => {
   return true;
 };
 
-// Map controller component
-function MapController({ center }: { center: [number, number] }) {
-  const map = useMap();
-  React.useEffect(() => {
-    map.setView(center, 12);
-  }, [center, map]);
-  return null;
-}
-
-function MeasureToolOnMap({
-  enabled,
-  onChange,
-  points,
-}: {
-  enabled: boolean;
-  onChange: (pts: [number, number][], distance: number | null) => void;
-  points: [number, number][];
-}) {
-  useMapEvents({
-    click: (e) => {
-      if (!enabled) return;
-      const { lat, lng } = e.latlng;
-      if (!points.length) {
-        onChange([[lat, lng]], null);
-      } else if (points.length === 1) {
-        const a = L.latLng(points[0][0], points[0][1]);
-        const b = L.latLng(lat, lng);
-        const d = a.distanceTo(b);
-        onChange([points[0], [lat, lng]], d);
-      } else {
-        onChange([[lat, lng]], null);
-      }
-    },
-  });
-  return null;
-}
-
-function LocationSelector({
-  setLat,
-  setLng,
-  setLocationName,
-  setLocationLoading,
-  setInvalidCoordinates,
-  setInvalidClickLocation,
-}: {
-  setLat: (lat: string) => void;
-  setLng: (lng: string) => void;
-  setLocationName: (name: string) => void;
-  setLocationLoading: (loading: boolean) => void;
-  setInvalidCoordinates: (invalid: boolean) => void;
-  setInvalidClickLocation: (location: [number, number] | null) => void;
-}) {
-  useMapEvents({
-    click: async (e: any) => {
-      const { lat, lng } = e.latlng;
-      const coordinatesWithinIndia = isWithinIndia(lat, lng);
-
-      if (coordinatesWithinIndia) {
-        setInvalidCoordinates(false);
-        setInvalidClickLocation(null);
-        setLat(lat.toFixed(6));
-        setLng(lng.toFixed(6));
-        setLocationLoading(true);
-        try {
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`
-          );
-          const data = await response.json();
-          if (data.display_name) setLocationName(data.display_name);
-        } catch (error) {
-          console.error("Error fetching location name:", error);
-        } finally {
-          setLocationLoading(false);
-        }
-      } else {
-        setInvalidCoordinates(true);
-        setInvalidClickLocation([lat, lng]);
-        setLat("");
-        setLng("");
-        setLocationName("");
-        setTimeout(() => setInvalidClickLocation(null), 3000);
-        alert(
-          "⚠️ Please select a location within India. DIGIPIN only works for Indian coordinates.\n\nIndia bounds: Latitude 6.5° to 37.1°, Longitude 68.0° to 97.5°"
-        );
-      }
-    },
-  });
-  return null;
-}
+// Leaflet helper components removed
 
 function App() {
   const [primaryTab, setPrimaryTab] = useState(0);
@@ -543,6 +446,31 @@ function App() {
     }
   };
 
+  const handleMapClick = async (coords: { lat: number; lng: number }) => {
+    const { lat, lng } = coords;
+    const coordinatesWithinIndia = isWithinIndia(lat, lng);
+
+    if (coordinatesWithinIndia) {
+      setInvalidCoordinates(false);
+      setInvalidClickLocation(null);
+      setEncodeLat(lat.toFixed(6));
+      setEncodeLng(lng.toFixed(6));
+      setSelectedLocation({ lat, lng });
+      setMapCenter([lat, lng]);
+      fetchLocationName(lat, lng);
+    } else {
+      setInvalidCoordinates(true);
+      setInvalidClickLocation([lat, lng]);
+      setEncodeLat("");
+      setEncodeLng("");
+      setLocationName("");
+      setTimeout(() => setInvalidClickLocation(null), 3000);
+      alert(
+        "⚠️ Please select a location within India. DIGIPIN only works for Indian coordinates.\n\nIndia bounds: Latitude 6.5° to 37.1°, Longitude 68.0° to 97.5°"
+      );
+    }
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -741,136 +669,25 @@ function App() {
           }}
         >
           <Box sx={{ width: "100%", height: "100%", position: "relative" }}>
-            {geoPinA && geoPinB ? (
-              <MapTabPanel geoPinA={geoPinA} geoPinB={geoPinB} />
-            ) : (
-              <MapView
-                center={mapCenter}
-                zoom={mapZoom}
-                indiaBounds={indiaBounds}
-                baseLayer={baseLayer}
-                onBaseChange={setBaseLayer}
-                onZoomChange={setMapZoom}
-              >
-                <LocationSelector
-                  setLat={setEncodeLat}
-                  setLng={setEncodeLng}
-                  setLocationName={setLocationName}
-                  setLocationLoading={setLoadingLocation}
-                  setInvalidCoordinates={setInvalidCoordinates}
-                  setInvalidClickLocation={setInvalidClickLocation}
-                />
-                {selectedLocation && (
-                  <Marker
-                    position={[selectedLocation.lat, selectedLocation.lng]}
-                    draggable
-                    eventHandlers={{ dragend: onMarkerDragEnd }}
-                  />
-                )}
-                {accuracyCenter && accuracyRadius && (
-                  <Circle
-                    center={accuracyCenter}
-                    radius={accuracyRadius}
-                    pathOptions={{ color: "#64b5f6", weight: 1, fillColor: "#64b5f6", fillOpacity: 0.1 }}
-                  />
-                )}
-                {measurePoints.length > 0 && <Marker position={measurePoints[0]} />}
-                {measurePoints.length === 2 && (
-                  <>
-                    <Marker position={measurePoints[1]} />
-                    <Polyline positions={measurePoints} pathOptions={{ color: "#ffeb3b", weight: 3 }} />
-                  </>
-                )}
-                <MeasureToolOnMap
-                  enabled={measureEnabled}
-                  points={measurePoints}
-                  onChange={(pts, dist) => {
-                    setMeasurePoints(pts);
-                    setMeasureDistance(dist);
-                  }}
-                />
-                {invalidClickLocation && (
-                  <Marker
-                    position={invalidClickLocation}
-                    icon={L.divIcon({
-                      className: "invalid-marker",
-                      html: '<div style="background-color: #f44336; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>',
-                      iconSize: [20, 20],
-                      iconAnchor: [10, 10],
-                    })}
-                  />
-                )}
-              </MapView>
-            )}
-            {/* Fab removed */}
-
-            {/* MobileBottomSheet removed */}
+            <MapplsMapView
+              center={{ lat: mapCenter[0], lng: mapCenter[1] }}
+              zoom={mapZoom}
+              onClick={handleMapClick}
+              onMapLoad={(map) => {
+                // Add marker logic here if needed, or use a separate effect
+                if (selectedLocation) {
+                  new window.mappls.Marker({
+                    map: map,
+                    position: { lat: selectedLocation.lat, lng: selectedLocation.lng },
+                    draggable: true,
+                  });
+                }
+              }}
+            />
           </Box>
 
           {!isMobile && (
             <>
-              {geoDistance ? (
-                <MapTabPanel geoPinA={geoPinA} geoPinB={geoPinB} />
-              ) : (
-                <MapView
-                  center={mapCenter}
-                  zoom={mapZoom}
-                  indiaBounds={indiaBounds}
-                  baseLayer={baseLayer}
-                  onBaseChange={setBaseLayer}
-                  onZoomChange={setMapZoom}
-                >
-                  <LocationSelector
-                    setLat={setEncodeLat}
-                    setLng={setEncodeLng}
-                    setLocationName={setLocationName}
-                    setLocationLoading={setLoadingLocation}
-                    setInvalidCoordinates={setInvalidCoordinates}
-                    setInvalidClickLocation={setInvalidClickLocation}
-                  />
-                  {selectedLocation && (
-                    <Marker
-                      position={[selectedLocation.lat, selectedLocation.lng]}
-                      draggable
-                      eventHandlers={{ dragend: onMarkerDragEnd }}
-                    />
-                  )}
-                  {accuracyCenter && accuracyRadius && (
-                    <Circle
-                      center={accuracyCenter}
-                      radius={accuracyRadius}
-                      pathOptions={{ color: "#64b5f6", weight: 1, fillColor: "#64b5f6", fillOpacity: 0.1 }}
-                    />
-                  )}
-                  {measurePoints.length > 0 && <Marker position={measurePoints[0]} />}
-                  {measurePoints.length === 2 && (
-                    <>
-                      <Marker position={measurePoints[1]} />
-                      <Polyline positions={measurePoints} pathOptions={{ color: "#ffeb3b", weight: 3 }} />
-                    </>
-                  )}
-                  <MeasureToolOnMap
-                    enabled={measureEnabled}
-                    points={measurePoints}
-                    onChange={(pts, dist) => {
-                      setMeasurePoints(pts);
-                      setMeasureDistance(dist);
-                    }}
-                  />
-                  {invalidClickLocation && (
-                    <Marker
-                      position={invalidClickLocation}
-                      icon={L.divIcon({
-                        className: "invalid-marker",
-                        html: '<div style="background-color: #f44336; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>',
-                        iconSize: [20, 20],
-                        iconAnchor: [10, 10],
-                      })}
-                    />
-                  )}
-                </MapView>
-              )}
-
               {/* Quick Actions SpeedDial when panel is collapsed */}
               {panelCollapsed && (
                 <SpeedDial

@@ -28,6 +28,12 @@ export const MapplsMapView: React.FC<MapplsMapViewProps> = ({
     const [mapInstance, setMapInstance] = useState<any>(null);
     const [scriptLoaded, setScriptLoaded] = useState(false);
     const initAttempted = useRef(false);
+    const latestOnClick = useRef(onClick);
+
+    // Update ref when onClick changes
+    useEffect(() => {
+        latestOnClick.current = onClick;
+    }, [onClick]);
 
     // Load the Mappls SDK script
     useEffect(() => {
@@ -77,10 +83,10 @@ export const MapplsMapView: React.FC<MapplsMapViewProps> = ({
                 setMapInstance(map);
 
                 // Add click listener
-                if (onClick && map && typeof map.addListener === 'function') {
+                if (map && typeof map.addListener === 'function') {
                     map.addListener("click", (e: any) => {
-                        if (e.lngLat) {
-                            onClick({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+                        if (e.lngLat && latestOnClick.current) {
+                            latestOnClick.current({ lat: e.lngLat.lat, lng: e.lngLat.lng });
                         }
                     });
                 }
@@ -96,7 +102,7 @@ export const MapplsMapView: React.FC<MapplsMapViewProps> = ({
         }, 100);
 
         return () => clearTimeout(timer);
-    }, [scriptLoaded, center.lat, center.lng, zoom, onClick, onMapLoad, mapInstance]);
+    }, [scriptLoaded, center.lat, center.lng, zoom, onMapLoad, mapInstance]);
 
     // Update center/zoom when they change
     useEffect(() => {

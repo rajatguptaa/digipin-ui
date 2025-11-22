@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Box,
   Fab,
@@ -119,6 +119,8 @@ function App() {
   const [measureEnabled, setMeasureEnabled] = useState(false);
   const [measurePoints, setMeasurePoints] = useState<[number, number][]>([]);
   const [measureDistance, setMeasureDistance] = useState<number | null>(null);
+  const measureMarkersRef = useRef<any[]>([]);
+  const measurePolylineRef = useRef<any>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [favoritesOpen, setFavoritesOpen] = useState(false);
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
@@ -596,6 +598,7 @@ function App() {
 
       // If measure mode is enabled, add point for distance measurement
       if (measureEnabled) {
+        // Add point to measurement
         const newPoints = [...measurePoints, [lat, lng] as [number, number]];
         setMeasurePoints(newPoints);
 
@@ -878,6 +881,55 @@ function App() {
     return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
+  // Render measurement markers and polyline
+  useEffect(() => {
+    if (!mapInstance || !window.mappls) return;
+
+    // Clear existing
+    measureMarkersRef.current.forEach(m => {
+      try { m.remove(); } catch (e) { console.error("Error removing marker:", e); }
+    });
+    measureMarkersRef.current = [];
+
+    if (measurePolylineRef.current) {
+      try { measurePolylineRef.current.remove(); } catch (e) { console.error("Error removing polyline:", e); }
+      measurePolylineRef.current = null;
+    }
+
+    // Create new markers
+    const newMarkers: any[] = [];
+    measurePoints.forEach((point) => {
+      try {
+        const marker = new window.mappls.Marker({
+          map: mapInstance,
+          position: { lat: point[0], lng: point[1] },
+          html: `<div style="background-color: #ec4899; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+        });
+        newMarkers.push(marker);
+      } catch (e) {
+        console.error("Error creating measurement marker:", e);
+      }
+    });
+    measureMarkersRef.current = newMarkers;
+
+    // Create polyline
+    if (measurePoints.length > 1) {
+      try {
+        const polyline = new window.mappls.Polyline({
+          map: mapInstance,
+          paths: measurePoints.map(p => ({ lat: p[0], lng: p[1] })),
+          strokeColor: '#ec4899',
+          strokeWeight: 3,
+          strokeOpacity: 0.8,
+          dashArray: [4, 4],
+        });
+        measurePolylineRef.current = polyline;
+      } catch (e) {
+        console.error("Error creating measurement polyline:", e);
+      }
+    }
+  }, [measurePoints, mapInstance]);
+
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
@@ -1137,7 +1189,7 @@ function App() {
           </Fab>
         </Tooltip>
 
-        <Tooltip title={measureEnabled ? "Clear Measurement" : "Measure Distance"} placement="left">
+        {/* <Tooltip title={measureEnabled ? "Clear Measurement" : "Measure Distance"} placement="left">
           <Fab
             color={measureEnabled ? "secondary" : "default"}
             onClick={() => {
@@ -1155,7 +1207,7 @@ function App() {
           >
             {measureEnabled ? <Close /> : <Straighten />}
           </Fab>
-        </Tooltip>
+        </Tooltip> */}
 
         <Tooltip title="Recenter Map" placement="left">
           <Fab

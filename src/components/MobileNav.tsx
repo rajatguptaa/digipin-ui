@@ -1,6 +1,6 @@
 import React from "react";
 import { Paper, BottomNavigation, BottomNavigationAction } from "@mui/material";
-import { LocationOn, Code, Storage, Assistant } from "@mui/icons-material";
+import { Code, QrCode, Assistant } from "@mui/icons-material";
 
 interface MobileNavProps {
     value: number;
@@ -39,11 +39,9 @@ export const MobileNav: React.FC<MobileNavProps> = ({ value, onChange }) => {
                     },
                 }}
             >
-                <BottomNavigationAction label="Map" icon={<LocationOn />} />
                 <BottomNavigationAction label="Encode" icon={<Code />} />
-                <BottomNavigationAction label="Decode" icon={<Code sx={{ transform: "rotate(90deg)" }} />} />
-                <BottomNavigationAction label="Tools" icon={<Storage />} />
-                <BottomNavigationAction label="AI" icon={<Assistant />} />
+                <BottomNavigationAction label="Decode" icon={<QrCode />} />
+                <BottomNavigationAction label="AI Assistant" icon={<Assistant />} />
             </BottomNavigation>
         </Paper>
     );

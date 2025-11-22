@@ -409,7 +409,8 @@ function App() {
     } catch { }
   }, [favorites]);
 
-  // Manage marker on map
+  const [currentInfoWindow, setCurrentInfoWindow] = useState<any>(null);
+
   useEffect(() => {
     if (!mapInstance || !window.mappls) return;
 
@@ -425,6 +426,15 @@ function App() {
       }
     }
 
+    // Remove old info window if exists
+    if (currentInfoWindow) {
+      try {
+        currentInfoWindow.remove();
+      } catch (e) {
+        console.error("Error removing info window:", e);
+      }
+    }
+
     // Add new marker if location is selected
     if (selectedLocation) {
       try {
@@ -433,6 +443,24 @@ function App() {
           position: { lat: selectedLocation.lat, lng: selectedLocation.lng },
           draggable: true,
         });
+
+        // Calculate DIGIPIN for popup
+        let pin = "";
+        try {
+          pin = getDigiPin(selectedLocation.lat, selectedLocation.lng);
+        } catch (e) {
+          console.error("Error calculating pin for popup:", e);
+        }
+
+        // Create InfoWindow
+        const infoWindow = new window.mappls.InfoWindow({
+          content: `<div style="padding: 5px; color: black;"><strong>DIGIPIN:</strong> ${pin}</div>`,
+          position: { lat: selectedLocation.lat, lng: selectedLocation.lng }
+        });
+
+        // Open InfoWindow
+        infoWindow.open(mapInstance, marker);
+        setCurrentInfoWindow(infoWindow);
 
         // Add drag event listener
         marker.addListener("dragend", (e: any) => {
@@ -444,11 +472,19 @@ function App() {
               setEncodeLat(lat.toFixed(6));
               setEncodeLng(lng.toFixed(6));
               setMapCenter([lat, lng]);
+
+              let newPin = "";
               try {
-                const pin = getDigiPin(lat, lng);
-                setEncodeResult(pin);
+                newPin = getDigiPin(lat, lng);
+                setEncodeResult(newPin);
               } catch { }
               fetchLocationName(lat, lng);
+
+              // Update InfoWindow content and position
+              infoWindow.setPosition({ lat, lng });
+              infoWindow.setContent(`<div style="padding: 5px; color: black;"><strong>DIGIPIN:</strong> ${newPin}</div>`);
+              infoWindow.open(mapInstance, marker);
+
             } else {
               alert("⚠️ Please keep the marker within India. DIGIPIN only works for Indian coordinates.");
               // Reset marker to previous position

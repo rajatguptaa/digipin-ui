@@ -1110,7 +1110,7 @@ function App() {
         elevation={4}
         sx={{
           position: "absolute",
-          top: 20,
+          top: isMobile ? 80 : 20,
           left: isMobile ? 20 : 440, // Align with floating header
           right: isMobile ? 20 : "auto",
           width: isMobile ? "auto" : 400,

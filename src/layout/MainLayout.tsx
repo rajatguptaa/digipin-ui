@@ -158,69 +158,84 @@ interface MainLayoutProps {
 }
 
 export const MainLayout: React.FC<MainLayoutProps> = ({ children, onInfoClick, currentTab, onTabChange }) => {
-    const theme = darkTheme; // Use the defined theme
+    const theme = darkTheme;
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
     return (
         <ThemeProvider theme={darkTheme}>
             <CssBaseline />
-            <Box sx={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", background: "#000" }}>
-                <AppBar position="static" elevation={0}>
-                    <Toolbar sx={{ height: 80, px: { xs: 2, sm: 4 } }}>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexGrow: 1 }}>
-                            <AppLogo />
-                            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-                                <Typography
-                                    variant="h5"
-                                    component="div"
-                                    sx={{
-                                        fontWeight: 700,
-                                        background: "linear-gradient(135deg, #60A5FA 0%, #3B82F6 50%, #2563EB 100%)",
-                                        WebkitBackgroundClip: "text",
-                                        WebkitTextFillColor: "transparent",
-                                        letterSpacing: "-0.02em",
-                                        display: { xs: "none", sm: "block" }
-                                    }}
-                                >
-                                    DIGIPIN
-                                </Typography>
-                                <Typography
-                                    variant="caption"
-                                    sx={{
-                                        color: "text.secondary",
-                                        fontWeight: 500,
-                                        letterSpacing: "0.05em",
-                                        textTransform: "uppercase",
-                                        fontSize: "0.7rem",
-                                        display: { xs: "none", md: "block" }
-                                    }}
-                                >
-                                    India's Smart Location System
-                                </Typography>
-                            </Box>
-                        </Box>
+            <Box sx={{
+                position: "relative",
+                height: "100vh",
+                width: "100vw",
+                overflow: "hidden",
+                background: "#000"
+            }}>
+                {/* Map Background Container (Children will be the map) */}
+                <Box sx={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    zIndex: 0
+                }}>
+                    {children}
+                </Box>
 
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                            <Tooltip title="About DIGIPIN">
-                                <IconButton
-                                    onClick={onInfoClick}
-                                    sx={{
-                                        color: "text.secondary",
-                                        transition: "all 0.3s ease",
-                                        "&:hover": {
-                                            color: "primary.main",
-                                            background: "rgba(59, 130, 246, 0.15)",
-                                            transform: "scale(1.1)"
-                                        }
-                                    }}
-                                >
-                                    <Info />
-                                </IconButton>
-                            </Tooltip>
-                        </Box>
-                    </Toolbar>
-                </AppBar>
-                <Box sx={{ flexGrow: 1, overflow: "hidden", position: "relative", pb: isMobile ? "70px" : 0 }}>{children}</Box>
+                {/* Floating Header (Logo & Search Area) */}
+                <Box sx={{
+                    position: "absolute",
+                    top: 20,
+                    left: isMobile ? 20 : 440, // Offset for panel on desktop
+                    right: 20,
+                    zIndex: 1000,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    pointerEvents: "none", // Let clicks pass through to map where empty
+                }}>
+                    {/* Logo Area (Only visible if not covered by panel or on mobile) */}
+                    <Box sx={{
+                        pointerEvents: "auto",
+                        display: isMobile ? "flex" : "none", // Hidden on desktop as it's in the panel
+                        alignItems: "center",
+                        gap: 1.5,
+                        background: "rgba(17, 17, 17, 0.85)",
+                        backdropFilter: "blur(20px)",
+                        p: 1,
+                        px: 2,
+                        borderRadius: "16px",
+                        border: "1px solid rgba(255, 255, 255, 0.1)",
+                        boxShadow: "0 4px 20px rgba(0,0,0,0.3)"
+                    }}>
+                        <AppLogo />
+                        <Typography variant="h6" sx={{ fontWeight: 700, fontSize: "1rem" }}>DIGIPIN</Typography>
+                    </Box>
+
+                    {/* Right Side Actions */}
+                    <Box sx={{ pointerEvents: "auto", display: "flex", gap: 1, ml: "auto" }}>
+                        <Tooltip title="About DIGIPIN">
+                            <IconButton
+                                onClick={onInfoClick}
+                                sx={{
+                                    background: "rgba(17, 17, 17, 0.85)",
+                                    backdropFilter: "blur(20px)",
+                                    border: "1px solid rgba(255, 255, 255, 0.1)",
+                                    color: "text.secondary",
+                                    "&:hover": {
+                                        background: "rgba(255, 255, 255, 0.1)",
+                                        color: "primary.main",
+                                    }
+                                }}
+                            >
+                                <Info />
+                            </IconButton>
+                        </Tooltip>
+                    </Box>
+                </Box>
+
+                {/* Mobile Navigation */}
                 {isMobile && currentTab !== undefined && onTabChange && (
                     <MobileNav value={currentTab} onChange={onTabChange} />
                 )}

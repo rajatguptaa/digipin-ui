@@ -6,13 +6,12 @@ type Props = {
   onClose: () => void;
   primaryTab: number;
   onPrimaryTabChange: (value: number) => void;
-  encodeSubTab: number;
-  onEncodeSubTabChange: (value: number) => void;
-  encodeSingleContent: React.ReactNode;
-  encodeBatchContent: React.ReactNode;
-  encodeGeoContent: React.ReactNode;
+  encodeContent: React.ReactNode;
   decodeContent: React.ReactNode;
   assistantContent: React.ReactNode;
+  // encodeSubTab and onEncodeSubTabChange are no longer needed here as the content handles it
+  encodeSubTab?: number;
+  onEncodeSubTabChange?: (value: number) => void;
 };
 
 export default function MobileBottomSheet({
@@ -20,16 +19,10 @@ export default function MobileBottomSheet({
   onClose,
   primaryTab,
   onPrimaryTabChange,
-  encodeSubTab,
-  onEncodeSubTabChange,
-  encodeSingleContent,
-  encodeBatchContent,
-  encodeGeoContent,
+  encodeContent,
   decodeContent,
   assistantContent,
 }: Props) {
-  const encodeViews = [encodeSingleContent, encodeBatchContent, encodeGeoContent];
-
   return (
     <Box sx={{ position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 1600, pointerEvents: "none" }}>
       <Paper
@@ -67,17 +60,7 @@ export default function MobileBottomSheet({
         <Box sx={{ flex: 1, overflowY: "auto", p: { xs: 1.5, sm: 2 } }}>
           {primaryTab === 0 && (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 2, height: "100%" }}>
-              <Tabs
-                value={encodeSubTab}
-                onChange={(_, value) => onEncodeSubTabChange(value)}
-                variant="fullWidth"
-                sx={{ backgroundColor: "rgba(100, 181, 246, 0.08)" }}
-              >
-                <Tab value={0} label="Single Encode" sx={{ color: "#64b5f6" }} />
-                <Tab value={1} label="Batch Tools" sx={{ color: "#64b5f6" }} />
-                <Tab value={2} label="Geo Utilities" sx={{ color: "#64b5f6" }} />
-              </Tabs>
-              <Box sx={{ flex: 1, overflowY: "auto", py: 1 }}>{encodeViews[encodeSubTab]}</Box>
+              {encodeContent}
             </Box>
           )}
 
